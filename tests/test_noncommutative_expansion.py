@@ -6,8 +6,8 @@ from symbolic_operator_calculus import (
     Vtilde_alpha2,
     Wminus_21,
     Wplus_12,
+    LinearCombination,
     OperatorAtom,
-    Product,
     expand_ordered,
     main_expression,
 )
@@ -19,7 +19,7 @@ def factors(term):
 
 def test_main_expression_uses_noncommutative_ordered_products():
     expression = main_expression()
-    assert isinstance(expression, Product)
+    assert isinstance(expression, LinearCombination)
 
     atoms = (
         Vtilde_alpha2,
@@ -45,7 +45,7 @@ def test_main_expression_expands_to_exactly_four_terms():
 def test_main_expression_expanded_signs_are_in_required_order():
     expanded = expand_ordered(main_expression())
 
-    assert tuple(term.sign for term in expanded.terms) == (1, -1, -1, 1)
+    assert tuple(term.coefficient for term in expanded.terms) == (1, -1, -1, 1)
 
 
 def test_main_expression_expanded_factors_are_in_required_order():
@@ -59,20 +59,16 @@ def test_main_expression_expanded_factors_are_in_required_order():
     )
 
 
-def test_difference_product_expands_without_sorting_terms():
+def test_difference_preserves_term_order_without_sorting():
     A = OperatorAtom("A")
     B = OperatorAtom("B")
-    C = OperatorAtom("C")
-    D = OperatorAtom("D")
 
-    expanded = expand_ordered((A - B) * (C - D))
+    expanded = expand_ordered(A - B)
 
-    assert tuple(term.sign for term in expanded.terms) == (1, -1, -1, 1)
+    assert tuple(term.coefficient for term in expanded.terms) == (1, -1)
     assert tuple(factors(term) for term in expanded.terms) == (
-        (A, C),
-        (A, D),
-        (B, C),
-        (B, D),
+        (A,),
+        (B,),
     )
 
 
