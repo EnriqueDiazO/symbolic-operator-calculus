@@ -1,0 +1,22 @@
+[build-system]
+requires = ["setuptools>=69"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "symbolic-operator-calculus"
+version = "0.1.0"
+description = "Minimal symbolic experiments for noncommutative integral-operator compositions."
+readme = {text = "Minimal symbolic experiments for noncommutative integral-operator compositions.", content-type = "text/markdown"}
+requires-python = ">=3.10"
+dependencies = [
+    "sympy>=1.14,<2",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=9,<10",
+]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-q"
