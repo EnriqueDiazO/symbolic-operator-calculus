@@ -35,6 +35,12 @@ from .operators import (
     expand_ordered,
     main_expression,
 )
+from .substitution import (
+    SafeSubstitutionError,
+    collect_bound_symbols,
+    fresh_symbol,
+    substitute_free_variable,
+)
 
 __all__ = [
     "AtomicAction",
@@ -56,6 +62,7 @@ __all__ = [
     "OperatorAtom",
     "Product",
     "ProductApplicationError",
+    "SafeSubstitutionError",
     "Term",
     "TransportedShiftAction",
     "UnsafeScalarSubstitutionError",
@@ -65,7 +72,10 @@ __all__ = [
     "apply_atom",
     "apply_linear_combination",
     "apply_product",
+    "collect_bound_symbols",
     "expand_ordered",
+    "fresh_symbol",
     "main_expression",
     "mvp_atomic_rules",
+    "substitute_free_variable",
 ]

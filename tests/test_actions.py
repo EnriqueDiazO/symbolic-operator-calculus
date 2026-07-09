@@ -20,11 +20,11 @@ from symbolic_operator_calculus import (
     ProductApplicationError,
     UnsupportedAtomicExpressionError,
     UnsupportedProductExpressionError,
-    UnsafeScalarSubstitutionError,
     Term,
     apply_atom,
     apply_linear_combination,
     apply_product,
+    main_expression,
     mvp_atomic_rules,
 )
 
@@ -40,6 +40,10 @@ def lc(*terms):
     return LinearCombination(
         tuple(Term(coefficient, product) for coefficient, product in terms)
     )
+
+
+def integral_count(expression):
+    return len(expression.atoms(sp.Integral))
 
 
 def test_multiplication_action_for_g1_on_function():
@@ -74,6 +78,21 @@ def test_transported_shift_alpha2_on_function():
     result = apply_atom(Vtilde_alpha2, f(x), x, mvp_atomic_rules())
 
     assert result == sp.Function("rho2")(x) * f(gamma2 * x)
+
+
+def test_transported_shift_alpha1_on_integral_operand():
+    x, y, f, _ = symbols_and_functions()
+    gamma1 = sp.Symbol("gamma1")
+    K = sp.Function("K")
+    operand = sp.Integral(K(x, y) * f(y), (y, 0, sp.oo))
+
+    result = apply_atom(Vtilde_alpha1, operand, x, mvp_atomic_rules())
+
+    expected = sp.Function("rho1")(x) * sp.Integral(
+        K(gamma1 * x, y) * f(y),
+        (y, 0, sp.oo),
+    )
+    assert result == expected
 
 
 def test_transported_shift_actions_remain_structurally_distinct():
@@ -282,25 +301,40 @@ def test_apply_product_allows_first_applied_factor_to_generate_simple_expression
     assert result == sp.Function("G1")(x) * sp.Function("G2")(x) * f(x)
 
 
-def test_apply_product_reports_intermediate_integral_failure():
+def test_apply_product_composes_shift_after_integral_kernel():
     x, y, f, _ = symbols_and_functions()
+    gamma1 = sp.Symbol("gamma1")
     product = Vtilde_alpha1 * Wplus_12
 
-    with pytest.raises(ProductApplicationError) as exc_info:
-        apply_product(product, f(x), x, mvp_atomic_rules(), integration_variable=y)
+    result = apply_product(product, f(x), x, mvp_atomic_rules())
 
-    assert exc_info.value.factor == Vtilde_alpha1
-    assert exc_info.value.factor_position == 1
+    expected = sp.Function("rho1")(x) * sp.Integral(
+        sp.Function("Lplus_12")(gamma1 * x, y) * f(y),
+        (y, 0, sp.oo),
+    )
+    assert result == expected
+    assert integral_count(result) == 1
 
 
-def test_apply_product_preserves_integral_substitution_restriction():
+def test_apply_product_composes_regularizer_after_shifted_kernel():
     x, y, f, _ = symbols_and_functions()
-    product = Vtilde_alpha1 * Wplus_12
+    v = sp.Symbol("v")
+    gamma1 = sp.Symbol("gamma1")
+    product = R11 * Vtilde_alpha1 * Wplus_12
 
-    with pytest.raises(ProductApplicationError) as exc_info:
-        apply_product(product, f(x), x, mvp_atomic_rules(), integration_variable=y)
+    result = apply_product(product, f(x), x, mvp_atomic_rules())
 
-    assert isinstance(exc_info.value.__cause__, UnsafeScalarSubstitutionError)
+    expected = sp.Integral(
+        sp.Function("R11")(x, v)
+        * sp.Function("rho1")(v)
+        * sp.Integral(
+            sp.Function("Lplus_12")(gamma1 * v, y) * f(y),
+            (y, 0, sp.oo),
+        ),
+        (v, 0, sp.oo),
+    )
+    assert result == expected
+    assert integral_count(result) == 2
 
 
 def test_mvp_atomic_rules_mapping_is_stable():
@@ -328,6 +362,98 @@ def test_apply_product_does_not_mutate_original_operand():
     apply_product(G2 * G1, operand, x, mvp_atomic_rules())
 
     assert operand == original_operand
+
+
+def test_main_term_product_produces_three_nested_integrals():
+    x, y, f, _ = symbols_and_functions()
+    u, v = sp.symbols("u v")
+    gamma1 = sp.Symbol("gamma1")
+    gamma2 = sp.Symbol("gamma2")
+    product = main_expression().terms[0].product
+
+    result = apply_product(product, f(x), x, mvp_atomic_rules())
+
+    expected = sp.Function("rho2")(x) * sp.Integral(
+        sp.Function("Lminus_21")(gamma2 * x, u)
+        * sp.Integral(
+            sp.Function("R11")(u, v)
+            * sp.Function("rho1")(v)
+            * sp.Integral(
+                sp.Function("Lplus_12")(gamma1 * v, y) * f(y),
+                (y, 0, sp.oo),
+            ),
+            (v, 0, sp.oo),
+        ),
+        (u, 0, sp.oo),
+    )
+    assert result == expected
+    assert integral_count(result) == 3
+
+
+def test_main_term_rho1_uses_regularizer_integration_variable():
+    x, _, f, _ = symbols_and_functions()
+    v = sp.Symbol("v")
+    result = apply_product(main_expression().terms[0].product, f(x), x, mvp_atomic_rules())
+
+    assert result.has(sp.Function("rho1")(v))
+    assert not result.has(sp.Function("rho1")(x))
+
+
+def test_main_term_rho2_uses_external_variable():
+    x, _, f, _ = symbols_and_functions()
+    u, v, y = sp.symbols("u v y")
+    result = apply_product(main_expression().terms[0].product, f(x), x, mvp_atomic_rules())
+
+    assert result.has(sp.Function("rho2")(x))
+    assert not result.has(sp.Function("rho2")(u))
+    assert not result.has(sp.Function("rho2")(v))
+    assert not result.has(sp.Function("rho2")(y))
+
+
+def test_main_term_gamma1_only_shifts_lplus_output_variable():
+    x, y, f, _ = symbols_and_functions()
+    v = sp.Symbol("v")
+    gamma1 = sp.Symbol("gamma1")
+    result = apply_product(main_expression().terms[0].product, f(x), x, mvp_atomic_rules())
+
+    assert result.has(sp.Function("Lplus_12")(gamma1 * v, y))
+    assert not result.has(sp.Function("Lplus_12")(v, y))
+    assert not result.has(f(gamma1 * y))
+
+
+def test_main_term_gamma2_only_shifts_lminus_output_variable():
+    x, _, f, _ = symbols_and_functions()
+    u = sp.Symbol("u")
+    gamma2 = sp.Symbol("gamma2")
+    result = apply_product(main_expression().terms[0].product, f(x), x, mvp_atomic_rules())
+
+    assert result.has(sp.Function("Lminus_21")(gamma2 * x, u))
+    assert not result.has(sp.Function("Lminus_21")(x, u))
+    assert not result.has(sp.Function("Lminus_21")(gamma2 * x, gamma2 * u))
+
+
+def test_main_term_bound_variables_are_distinct_and_not_captured():
+    x, _, f, _ = symbols_and_functions()
+    y, u, v = sp.symbols("y u v")
+    result = apply_product(main_expression().terms[0].product, f(x), x, mvp_atomic_rules())
+
+    bound_variables = {
+        limit[0]
+        for integral in result.atoms(sp.Integral)
+        for limit in integral.limits
+    }
+    assert bound_variables == {y, u, v}
+    assert bound_variables.isdisjoint(result.free_symbols)
+
+
+def test_main_term_product_does_not_mutate_original_product():
+    x, _, f, _ = symbols_and_functions()
+    product = main_expression().terms[0].product
+    original_factors = product.factors
+
+    apply_product(product, f(x), x, mvp_atomic_rules())
+
+    assert product.factors == original_factors
 
 
 def test_apply_linear_combination_two_atoms():
@@ -454,7 +580,8 @@ def test_apply_linear_combination_wraps_unregistered_atom_term():
 
 def test_apply_linear_combination_wraps_error_inside_product_term():
     x, _, f, _ = symbols_and_functions()
-    combination = lc((1, G1 * Wplus_12))
+    unknown = OperatorAtom("Unknown")
+    combination = lc((1, G1 * unknown))
 
     with pytest.raises(LinearCombinationApplicationError) as exc_info:
         apply_linear_combination(combination, f(x), x, mvp_atomic_rules())
@@ -479,13 +606,24 @@ def test_apply_linear_combination_error_context_identifies_failed_term():
 
 def test_apply_linear_combination_preserves_original_error_cause_chain():
     x, _, f, _ = symbols_and_functions()
-    combination = lc((1, G1 * Wplus_12))
+    unknown = OperatorAtom("Unknown")
+    combination = lc((1, G1 * unknown))
 
     with pytest.raises(LinearCombinationApplicationError) as exc_info:
         apply_linear_combination(combination, f(x), x, mvp_atomic_rules())
 
     assert isinstance(exc_info.value.__cause__, ProductApplicationError)
-    assert isinstance(exc_info.value.__cause__.__cause__, MissingIntegrationVariableError)
+    assert isinstance(exc_info.value.__cause__.__cause__, MissingAtomicActionError)
+
+
+def test_apply_linear_combination_wraps_missing_variable_for_integral_atom():
+    x, _, f, _ = symbols_and_functions()
+    combination = lc((1, Wplus_12))
+
+    with pytest.raises(LinearCombinationApplicationError) as exc_info:
+        apply_linear_combination(combination, f(x), x, mvp_atomic_rules())
+
+    assert isinstance(exc_info.value.__cause__, MissingIntegrationVariableError)
 
 
 def test_apply_linear_combination_nontrivial_scalar_operand():
@@ -540,18 +678,15 @@ def test_apply_linear_combination_preserves_apply_product_stability():
     )
 
 
-def test_apply_linear_combination_preserves_integral_restriction():
+def test_apply_linear_combination_applies_shifted_integral_product():
     x, y, f, _ = symbols_and_functions()
+    gamma1 = sp.Symbol("gamma1")
     combination = lc((1, Vtilde_alpha1 * Wplus_12))
 
-    with pytest.raises(LinearCombinationApplicationError) as exc_info:
-        apply_linear_combination(
-            combination,
-            f(x),
-            x,
-            mvp_atomic_rules(),
-            integration_variable=y,
-        )
+    result = apply_linear_combination(combination, f(x), x, mvp_atomic_rules())
 
-    assert isinstance(exc_info.value.__cause__, ProductApplicationError)
-    assert isinstance(exc_info.value.__cause__.__cause__, UnsafeScalarSubstitutionError)
+    expected = sp.Function("rho1")(x) * sp.Integral(
+        sp.Function("Lplus_12")(gamma1 * x, y) * f(y),
+        (y, 0, sp.oo),
+    )
+    assert result == expected

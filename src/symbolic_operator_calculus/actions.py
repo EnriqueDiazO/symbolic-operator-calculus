@@ -25,6 +25,12 @@ from .operators import (
     Wminus_21,
     Wplus_12,
 )
+from .substitution import (
+    SafeSubstitutionError,
+    collect_bound_symbols,
+    fresh_symbol,
+    substitute_free_variable,
+)
 
 ScalarFunction: TypeAlias = Callable[..., sp.Expr]
 
@@ -97,7 +103,7 @@ class MissingIntegrationVariableError(AtomicActionError, ValueError):
     """Raised when an integral action has no explicit integration variable."""
 
 
-class UnsafeScalarSubstitutionError(AtomicActionError, ValueError):
+class UnsafeScalarSubstitutionError(AtomicActionError, SafeSubstitutionError):
     """Raised when this phase cannot safely substitute inside an operand."""
 
 
@@ -245,9 +251,10 @@ def apply_product(
 
     ``Product.factors`` stores factors in written left-to-right order. Applying
     a product therefore traverses those factors from right to left and delegates
-    each atomic step to ``apply_atom``. This function intentionally does not
-    implement ``LinearCombination``, fresh dummy variables, substitution under
-    bound ``Integral`` objects, or operator simplification.
+    each atomic step to ``apply_atom``. Integral factors receive deterministic
+    local dummy variables when a multi-factor product needs them. This function
+    intentionally does not implement ``LinearCombination`` or operator
+    simplification.
 
     The existing AST permits ``Product(())`` and uses it as an identity-like
     accumulator during expansion, so applying an empty product returns the
@@ -261,14 +268,31 @@ def apply_product(
 
     result = operand
     factor_count = len(product.factors)
+    generated_variables: set[sp.Symbol] = set()
+    first_integral_variable = integration_variable
+    used_explicit_integral_variable = False
     for zero_based_position, factor in reversed(list(enumerate(product.factors))):
+        factor_integration_variable = integration_variable
+        if _atom_needs_integration_variable(factor, rules):
+            if first_integral_variable is not None and not used_explicit_integral_variable:
+                factor_integration_variable = first_integral_variable
+                used_explicit_integral_variable = True
+            elif factor_count > 1:
+                factor_integration_variable = _fresh_integration_variable(
+                    result,
+                    variable,
+                    generated_variables,
+                )
+                generated_variables.add(factor_integration_variable)
+            else:
+                factor_integration_variable = None
         try:
             result = apply_atom(
                 factor,
                 result,
                 variable,
                 rules,
-                integration_variable=integration_variable,
+                integration_variable=factor_integration_variable,
             )
         except AtomicActionError as exc:
             raise ProductApplicationError(
@@ -294,8 +318,7 @@ def apply_linear_combination(
     This function therefore implements ``(sum c_i A_i)f = sum c_i A_i(f)``.
     Single-atom products delegate to ``apply_atom``; longer or empty products
     delegate to ``apply_product``. There is deliberately no generic dispatcher,
-    no recursive ``LinearCombination`` application, no fresh dummy variables,
-    no substitution under bound ``Integral`` objects, and no simplification.
+    no recursive ``LinearCombination`` application, and no simplification.
     """
 
     if not isinstance(combination, LinearCombination):
@@ -375,9 +398,31 @@ def _replace_free_variable(
     variable: sp.Symbol,
     replacement: sp.Expr,
 ) -> sp.Expr:
-    if operand.has(sp.Integral):
-        raise UnsafeScalarSubstitutionError(
-            "Phase C substitutions are limited to scalar operands without "
-            "bound Integral objects."
-        )
-    return operand.xreplace({variable: replacement})
+    try:
+        return substitute_free_variable(operand, variable, replacement)
+    except SafeSubstitutionError as exc:
+        raise UnsafeScalarSubstitutionError(str(exc)) from exc
+
+
+def _atom_needs_integration_variable(
+    atom: object,
+    rules: Mapping[OperatorAtom, AtomicAction],
+) -> bool:
+    if not isinstance(atom, OperatorAtom):
+        return False
+    action = rules.get(atom)
+    return isinstance(action, (IntegralKernelAction, FormalRegularizerAction))
+
+
+def _fresh_integration_variable(
+    expression: sp.Expr,
+    output_variable: sp.Symbol,
+    generated_variables: set[sp.Symbol],
+) -> sp.Symbol:
+    avoid = (
+        expression.free_symbols
+        | collect_bound_symbols(expression)
+        | generated_variables
+        | {output_variable}
+    )
+    return fresh_symbol(avoid, preferred_names=("y", "v", "u", "w", "z"))
