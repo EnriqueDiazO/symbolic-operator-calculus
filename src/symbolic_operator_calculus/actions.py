@@ -25,6 +25,7 @@ from .operators import (
     Product,
     R11,
     Scalar,
+    S_Rplus,
     Vtilde_alpha1,
     Vtilde_alpha2,
     Wminus_21,
@@ -174,6 +175,39 @@ class IdentityAction:
         return operand
 
 
+class PrincipalValue(sp.Function):
+    """Unevaluated Cauchy principal value of one SymPy expression."""
+
+    nargs = 1
+
+
+@dataclass(frozen=True)
+class PrincipalValueIntegralAction:
+    """Singular half-line action with an explicit principal-value wrapper."""
+
+    def apply(
+        self,
+        operand: sp.Expr,
+        variable: sp.Symbol,
+        *,
+        integration_variable: sp.Symbol | None = None,
+    ) -> sp.Expr:
+        if integration_variable is None:
+            raise MissingIntegrationVariableError(
+                "Principal-value actions require an explicit integration variable."
+            )
+        substituted = _replace_free_variable(
+            operand,
+            variable,
+            integration_variable,
+        )
+        integral = sp.Integral(
+            substituted / (integration_variable - variable),
+            (integration_variable, 0, sp.oo),
+        )
+        return PrincipalValue(integral) / (sp.pi * sp.I)
+
+
 @dataclass(frozen=True)
 class TransportedShiftAction:
     """Action of rho V_alpha with alpha(x) = gamma*x."""
@@ -231,6 +265,7 @@ class FormalRegularizerAction:
 AtomicAction: TypeAlias = (
     IdentityAction
     | MultiplicationAction
+    | PrincipalValueIntegralAction
     | TransportedShiftAction
     | IntegralKernelAction
     | FormalRegularizerAction
@@ -253,6 +288,7 @@ def mvp_atomic_rules() -> Mapping[OperatorAtom, AtomicAction]:
 
     return MappingProxyType({
         I: IdentityAction(),
+        S_Rplus: PrincipalValueIntegralAction(),
         G1: MultiplicationAction(G1_scalar),
         G2: MultiplicationAction(G2_scalar),
         Vtilde_alpha1: TransportedShiftAction(rho1, gamma1),
@@ -517,7 +553,10 @@ def _atom_needs_integration_variable(
     if not isinstance(atom, OperatorAtom):
         return False
     action = rules.get(atom)
-    return isinstance(action, (IntegralKernelAction, FormalRegularizerAction))
+    return isinstance(
+        action,
+        (IntegralKernelAction, FormalRegularizerAction, PrincipalValueIntegralAction),
+    )
 
 
 def _fresh_integration_variable(

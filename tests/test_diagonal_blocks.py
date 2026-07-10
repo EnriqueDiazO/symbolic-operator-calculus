@@ -13,7 +13,6 @@ from symbolic_operator_calculus import (
     Vtilde_alpha1,
     Vtilde_alpha2,
     LinearCombination,
-    MissingAtomicActionError,
     ModCompactRelation,
     OperatorAtom,
     WienerHopfModel,
@@ -67,11 +66,8 @@ def test_identity_action_returns_the_exact_input_expression():
     assert result is operand
 
 
-def test_s_rplus_action_remains_explicitly_unsupported():
-    x = sp.Symbol("x")
-
-    with pytest.raises(MissingAtomicActionError):
-        apply_atom(S_Rplus, sp.Function("f")(x), x, mvp_atomic_rules())
+def test_s_rplus_has_an_atomic_action_after_k3b():
+    assert S_Rplus in mvp_atomic_rules()
 
 
 def test_pplus_is_the_exact_ordered_two_term_projection():
