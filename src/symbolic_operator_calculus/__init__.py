@@ -21,6 +21,7 @@ from .actions import (
     apply_linear_combination,
     apply_linear_combination_ordered,
     apply_product,
+    explicit_wiener_hopf_rules,
     mvp_atomic_rules,
 )
 from .blocks import (
@@ -140,6 +141,7 @@ __all__ = [
     "expand_ordered",
     "extract_applied_kernels",
     "extract_integral_kernel",
+    "explicit_wiener_hopf_rules",
     "forward_exponential",
     "frequency_variable",
     "fresh_symbol",

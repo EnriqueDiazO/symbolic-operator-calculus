@@ -9,11 +9,13 @@ from __future__ import annotations
 from collections.abc import Callable, Mapping
 from dataclasses import dataclass
 from fractions import Fraction
+from functools import partial
 from types import MappingProxyType
 from typing import TypeAlias
 
 import sympy as sp
 
+from .fourier import localized_lminus_kernel, localized_lplus_kernel
 from .operators import (
     G1,
     G2,
@@ -242,6 +244,28 @@ def mvp_atomic_rules() -> Mapping[OperatorAtom, AtomicAction]:
         Wminus_21: IntegralKernelAction(Lminus_21_kernel),
         R11: FormalRegularizerAction(R11_kernel),
     })
+
+
+def explicit_wiener_hopf_rules(
+    *,
+    decay: sp.Symbol | None = None,
+) -> Mapping[OperatorAtom, AtomicAction]:
+    """Return local action rules using the normalized Fourier kernels.
+
+    Only the two off-diagonal Wiener--Hopf actions differ from
+    :func:`mvp_atomic_rules`; all other atomic actions retain their existing
+    semantics.  The returned mapping is immutable and does not change the
+    formal default rules.
+    """
+
+    rules = dict(mvp_atomic_rules())
+    rules[Wplus_12] = IntegralKernelAction(
+        partial(localized_lplus_kernel, decay=decay)
+    )
+    rules[Wminus_21] = IntegralKernelAction(
+        partial(localized_lminus_kernel, decay=decay)
+    )
+    return MappingProxyType(rules)
 
 
 def apply_atom(
