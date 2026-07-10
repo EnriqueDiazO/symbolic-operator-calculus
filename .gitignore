@@ -1,0 +1,252 @@
+# ============================================================
+
+# Python
+
+# ============================================================
+
+**pycache**/
+*.py[cod]
+*$py.class
+
+# Extensiones compiladas
+
+*.so
+*.pyd
+*.dll
+
+# ============================================================
+
+# Entornos virtuales
+
+# ============================================================
+
+.venv/
+venv/
+env/
+ENV/
+
+# Archivos de configuración local del entorno
+
+.python-version
+.env
+.env.*
+!.env.example
+
+# ============================================================
+
+# Empaquetado y distribución
+
+# ============================================================
+
+build/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+share/python-wheels/
+
+*.egg-info/
+*.egg
+MANIFEST
+
+# Instalaciones editables antiguas
+
+*.egg-link
+
+# ============================================================
+
+# Herramientas de pruebas y cobertura
+
+# ============================================================
+
+.pytest_cache/
+.coverage
+.coverage.*
+htmlcov/
+coverage.xml
+coverage.json
+*.cover
+*.py.cover
+.hypothesis/
+.tox/
+.nox/
+
+# ============================================================
+
+# Análisis estático, tipos y linters
+
+# ============================================================
+
+.mypy_cache/
+.dmypy.json
+dmypy.json
+
+.pyright/
+.pytype/
+
+.ruff_cache/
+
+# ============================================================
+
+# Jupyter
+
+# ============================================================
+
+.ipynb_checkpoints/
+
+# ============================================================
+
+# IDE y editores
+
+# ============================================================
+
+.vscode/
+.idea/
+
+*.swp
+*.swo
+*.swn
+*~
+.project
+.pydevproject
+
+# ============================================================
+
+# Sistema operativo
+
+# ============================================================
+
+.DS_Store
+.AppleDouble
+.LSOverride
+
+Thumbs.db
+Desktop.ini
+
+# ============================================================
+
+# Archivos temporales y registros
+
+# ============================================================
+
+*.log
+*.tmp
+*.temp
+*.bak
+*.old
+*.orig
+
+.cache/
+tmp/
+temp/
+
+# ============================================================
+
+# Documentación generada
+
+# ============================================================
+
+docs/_build/
+site/
+
+# Sphinx
+
+docs/build/
+docs/source/generated/
+
+# MkDocs
+
+.mcache/
+
+# ============================================================
+
+# LaTeX: ignorar auxiliares, conservar fuentes y PDFs finales
+
+# ============================================================
+
+*.aux
+*.bbl
+*.bcf
+*.blg
+*.fdb_latexmk
+*.fls
+*.idx
+*.ilg
+*.ind
+*.lof
+*.lot
+*.nav
+*.out
+*.run.xml
+*.snm
+*.synctex.gz
+*.toc
+*.vrb
+*.xdv
+
+# No se ignoran globalmente:
+
+# *.tex
+
+# *.bib
+
+# *.pdf
+
+# ============================================================
+
+# Resultados computacionales locales
+
+# ============================================================
+
+outputs/
+artifacts/
+reports/generated/
+
+# Datos grandes o locales
+
+data/raw/
+data/interim/
+data/processed/
+
+# Mantener las carpetas aunque estén vacías
+
+!data/raw/.gitkeep
+!data/interim/.gitkeep
+!data/processed/.gitkeep
+
+# ============================================================
+
+# Archivos locales del proyecto
+
+# ============================================================
+
+local/
+scratch/
+sandbox/
+
+# Copias comprimidas del repositorio
+
+*.zip
+*.tar
+*.tar.gz
+*.tgz
+*.7z
+
+# ============================================================
+
+# Seguridad
+
+# ============================================================
+
+*.pem
+*.key
+*.crt
+credentials.json
+secrets.json
+service-account*.json
