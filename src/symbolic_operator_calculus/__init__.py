@@ -60,6 +60,12 @@ from .fourier import (
     positive_inverse_integral,
     time_variable,
 )
+from .derivations import (
+    DerivationTraceError,
+    FirstSchurCorrectionSignTrace,
+    FirstSchurDerivationTrace,
+    build_first_schur_derivation_trace,
+)
 from .kernels import (
     FirstSchurCorrectionFactorization,
     KernelCombination,
@@ -116,12 +122,15 @@ __all__ = [
     "AtomicAction",
     "AtomicActionError",
     "CompactSchurActionError",
+    "DerivationTraceError",
     "AppliedLinearCombination",
     "AppliedTerm",
     "ExactBlock",
     "FirstSchurReduction",
     "FirstSchurCorrectionFactorization",
     "FirstSchurCompactModelAction",
+    "FirstSchurCorrectionSignTrace",
+    "FirstSchurDerivationTrace",
     "FormalRegularizerAction",
     "FormalRegularizer",
     "FourierEvaluationError",
@@ -180,6 +189,7 @@ __all__ = [
     "apply_product",
     "bminus_symbol",
     "bplus_symbol",
+    "build_first_schur_derivation_trace",
     "c22_integrand",
     "collect_bound_symbols",
     "combined_kernel_c22",
