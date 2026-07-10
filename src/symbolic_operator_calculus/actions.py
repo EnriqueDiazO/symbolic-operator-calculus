@@ -8,6 +8,7 @@ from __future__ import annotations
 
 from collections.abc import Callable, Mapping
 from dataclasses import dataclass
+from fractions import Fraction
 from types import MappingProxyType
 from typing import TypeAlias
 
@@ -20,6 +21,7 @@ from .operators import (
     OperatorAtom,
     Product,
     R11,
+    Scalar,
     Vtilde_alpha1,
     Vtilde_alpha2,
     Wminus_21,
@@ -111,14 +113,14 @@ class UnsafeScalarSubstitutionError(AtomicActionError, SafeSubstitutionError):
 class AppliedTerm:
     """One ordered product application with its original scalar coefficient."""
 
-    coefficient: int | float | complex
+    coefficient: Scalar
     product: Product
     expression: sp.Expr
 
     def as_expr(self) -> sp.Expr:
         """Project this ordered applied term to a signed SymPy expression."""
 
-        return self.coefficient * self.expression
+        return _sympy_coefficient(self.coefficient) * self.expression
 
 
 @dataclass(frozen=True)
@@ -489,3 +491,9 @@ def _fresh_integration_variable(
         | {output_variable}
     )
     return fresh_symbol(avoid, preferred_names=("y", "v", "u", "w", "z"))
+
+
+def _sympy_coefficient(coefficient: Scalar) -> sp.Expr:
+    if isinstance(coefficient, Fraction):
+        return sp.Rational(coefficient.numerator, coefficient.denominator)
+    return sp.sympify(coefficient)

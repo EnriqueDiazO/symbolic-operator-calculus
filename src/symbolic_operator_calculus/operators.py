@@ -8,14 +8,18 @@ tuples and expansion is an explicit operation.
 from __future__ import annotations
 
 from dataclasses import dataclass
+from fractions import Fraction
 from typing import TypeAlias
 
-Scalar: TypeAlias = int | float | complex
+Scalar: TypeAlias = int | float | complex | Fraction
 OperatorExpression: TypeAlias = "OperatorAtom | Product | LinearCombination"
 
 
 def _is_scalar(value: object) -> bool:
-    return isinstance(value, (int, float, complex)) and not isinstance(value, bool)
+    return isinstance(value, (int, float, complex, Fraction)) and not isinstance(
+        value,
+        bool,
+    )
 
 
 def _is_zero_scalar(value: object) -> bool:
@@ -24,7 +28,9 @@ def _is_zero_scalar(value: object) -> bool:
 
 def _checked_coefficient(coefficient: object) -> Scalar:
     if not _is_scalar(coefficient):
-        raise TypeError("A term coefficient must be an int, float, or complex.")
+        raise TypeError(
+            "A term coefficient must be an int, float, complex, or Fraction."
+        )
     return coefficient
 
 

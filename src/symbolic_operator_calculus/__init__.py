@@ -23,6 +23,12 @@ from .actions import (
     apply_product,
     mvp_atomic_rules,
 )
+from .blocks import (
+    a12_mod_compact_relation,
+    a12_wh_model,
+    a21_mod_compact_relation,
+    a21_wh_model,
+)
 from .fourier import (
     FourierEvaluationError,
     InverseFourierIntegral,
@@ -68,6 +74,11 @@ from .operators import (
     expand_ordered,
     main_expression,
 )
+from .relations import (
+    ExactBlock,
+    ModCompactRelation,
+    WienerHopfModel,
+)
 from .substitution import (
     SafeSubstitutionError,
     collect_bound_symbols,
@@ -80,6 +91,7 @@ __all__ = [
     "AtomicActionError",
     "AppliedLinearCombination",
     "AppliedTerm",
+    "ExactBlock",
     "FormalRegularizerAction",
     "FourierEvaluationError",
     "G1",
@@ -98,6 +110,7 @@ __all__ = [
     "LinearCombination",
     "MissingAtomicActionError",
     "MissingIntegrationVariableError",
+    "ModCompactRelation",
     "MultiplicationAction",
     "OperatorAtom",
     "Product",
@@ -109,6 +122,11 @@ __all__ = [
     "UnsupportedAtomicExpressionError",
     "UnsupportedLinearCombinationExpressionError",
     "UnsupportedProductExpressionError",
+    "WienerHopfModel",
+    "a12_mod_compact_relation",
+    "a12_wh_model",
+    "a21_mod_compact_relation",
+    "a21_wh_model",
     "apply_atom",
     "apply_combined_kernel_c22",
     "apply_linear_combination",
