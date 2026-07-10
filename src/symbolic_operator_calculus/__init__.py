@@ -100,6 +100,11 @@ from .relations import (
     ModCompactSchurRelation,
     WienerHopfModel,
 )
+from .schur import (
+    CompactSchurActionError,
+    FirstSchurCompactModelAction,
+    apply_a22_first_schur_model_compact,
+)
 from .substitution import (
     SafeSubstitutionError,
     collect_bound_symbols,
@@ -110,11 +115,13 @@ from .substitution import (
 __all__ = [
     "AtomicAction",
     "AtomicActionError",
+    "CompactSchurActionError",
     "AppliedLinearCombination",
     "AppliedTerm",
     "ExactBlock",
     "FirstSchurReduction",
     "FirstSchurCorrectionFactorization",
+    "FirstSchurCompactModelAction",
     "FormalRegularizerAction",
     "FormalRegularizer",
     "FourierEvaluationError",
@@ -166,6 +173,7 @@ __all__ = [
     "a22_first_schur_mod_compact_relation",
     "a22_first_schur_reduction",
     "apply_atom",
+    "apply_a22_first_schur_model_compact",
     "apply_combined_kernel_c22",
     "apply_linear_combination",
     "apply_linear_combination_ordered",
