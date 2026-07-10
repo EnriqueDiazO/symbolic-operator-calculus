@@ -2,10 +2,14 @@
 
 from __future__ import annotations
 
+from fractions import Fraction
+
 from .operators import (
     G1,
     G2,
+    I,
     LinearCombination,
+    S_Rplus,
     Term,
     Vtilde_alpha1,
     Vtilde_alpha2,
@@ -13,6 +17,42 @@ from .operators import (
     Wplus_12,
 )
 from .relations import ExactBlock, ModCompactRelation, WienerHopfModel
+
+
+def pplus_operator() -> LinearCombination:
+    """Return the exact structural projection ``(I + S_Rplus) / 2``."""
+
+    half = Fraction(1, 2)
+    return LinearCombination((Term(half, I), Term(half, S_Rplus)))
+
+
+def pminus_operator() -> LinearCombination:
+    """Return the exact structural projection ``(I - S_Rplus) / 2``."""
+
+    half = Fraction(1, 2)
+    return LinearCombination((Term(half, I), Term(-half, S_Rplus)))
+
+
+def a11_exact_operator() -> LinearCombination:
+    """Return the exact expanded operator ``Vtilde_alpha1 Pplus + G1 Pminus``."""
+
+    pplus = pplus_operator()
+    pminus = pminus_operator()
+    return LinearCombination(
+        tuple(Term(term.coefficient, Vtilde_alpha1 * term.product) for term in pplus.terms)
+        + tuple(Term(term.coefficient, G1 * term.product) for term in pminus.terms)
+    )
+
+
+def a22_exact_operator() -> LinearCombination:
+    """Return the exact expanded operator ``Vtilde_alpha2 Pplus + G2 Pminus``."""
+
+    pplus = pplus_operator()
+    pminus = pminus_operator()
+    return LinearCombination(
+        tuple(Term(term.coefficient, Vtilde_alpha2 * term.product) for term in pplus.terms)
+        + tuple(Term(term.coefficient, G2 * term.product) for term in pminus.terms)
+    )
 
 
 def a12_wh_model() -> WienerHopfModel:

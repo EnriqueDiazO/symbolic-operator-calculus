@@ -295,6 +295,8 @@ R11 = OperatorAtom("R11", kind="formal_regularizer")
 Vtilde_alpha1 = OperatorAtom("Vtilde_alpha1")
 G1 = OperatorAtom("G1")
 Wplus_12 = OperatorAtom("Wplus_12")
+I = OperatorAtom("I")  # noqa: E741 - mathematical identity operator
+S_Rplus = OperatorAtom("S_Rplus")
 
 
 def main_expression() -> LinearCombination:

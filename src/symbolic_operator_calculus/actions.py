@@ -19,6 +19,7 @@ from .fourier import localized_lminus_kernel, localized_lplus_kernel
 from .operators import (
     G1,
     G2,
+    I,
     LinearCombination,
     OperatorAtom,
     Product,
@@ -160,6 +161,20 @@ class MultiplicationAction:
 
 
 @dataclass(frozen=True)
+class IdentityAction:
+    """Exact identity action, q(x) -> q(x)."""
+
+    def apply(
+        self,
+        operand: sp.Expr,
+        variable: sp.Symbol,
+        *,
+        integration_variable: sp.Symbol | None = None,
+    ) -> sp.Expr:
+        return operand
+
+
+@dataclass(frozen=True)
 class TransportedShiftAction:
     """Action of rho V_alpha with alpha(x) = gamma*x."""
 
@@ -214,7 +229,8 @@ class FormalRegularizerAction:
 
 
 AtomicAction: TypeAlias = (
-    MultiplicationAction
+    IdentityAction
+    | MultiplicationAction
     | TransportedShiftAction
     | IntegralKernelAction
     | FormalRegularizerAction
@@ -236,6 +252,7 @@ def mvp_atomic_rules() -> Mapping[OperatorAtom, AtomicAction]:
     """Return the explicit atomic action mapping for the current MVP phase."""
 
     return MappingProxyType({
+        I: IdentityAction(),
         G1: MultiplicationAction(G1_scalar),
         G2: MultiplicationAction(G2_scalar),
         Vtilde_alpha1: TransportedShiftAction(rho1, gamma1),
