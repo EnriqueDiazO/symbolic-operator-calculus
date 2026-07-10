@@ -108,6 +108,38 @@ class UnsafeScalarSubstitutionError(AtomicActionError, SafeSubstitutionError):
 
 
 @dataclass(frozen=True)
+class AppliedTerm:
+    """One ordered product application with its original scalar coefficient."""
+
+    coefficient: int | float | complex
+    product: Product
+    expression: sp.Expr
+
+    def as_expr(self) -> sp.Expr:
+        """Project this ordered applied term to a signed SymPy expression."""
+
+        return self.coefficient * self.expression
+
+
+@dataclass(frozen=True)
+class AppliedLinearCombination:
+    """Ordered product applications before projection to a SymPy ``Add``."""
+
+    result_terms: tuple[AppliedTerm, ...]
+
+    @property
+    def terms(self) -> tuple[AppliedTerm, ...]:
+        """Alias for callers that prefer the shorter structural name."""
+
+        return self.result_terms
+
+    def as_expr(self) -> sp.Expr:
+        """Project the ordered applied terms to their final SymPy sum."""
+
+        return sum((term.as_expr() for term in self.result_terms), sp.Integer(0))
+
+
+@dataclass(frozen=True)
 class MultiplicationAction:
     """Action of a scalar multiplication operator, q(x) -> G(x) q(x)."""
 
@@ -312,13 +344,38 @@ def apply_linear_combination(
     *,
     integration_variable: sp.Symbol | None = None,
 ) -> sp.Expr:
-    """Apply an ordered linear combination term by term.
+    """Apply an ordered linear combination and return its SymPy projection.
 
     The current AST stores each term as ``Term(coefficient, Product(...))``.
     This function therefore implements ``(sum c_i A_i)f = sum c_i A_i(f)``.
-    Single-atom products delegate to ``apply_atom``; longer or empty products
-    delegate to ``apply_product``. There is deliberately no generic dispatcher,
-    no recursive ``LinearCombination`` application, and no simplification.
+    The ordered intermediate structure is produced by
+    ``apply_linear_combination_ordered`` and then projected to a scalar SymPy
+    sum. There is deliberately no generic dispatcher, no recursive
+    ``LinearCombination`` application, and no simplification.
+    """
+
+    return apply_linear_combination_ordered(
+        combination,
+        operand,
+        variable,
+        rules,
+        integration_variable=integration_variable,
+    ).as_expr()
+
+
+def apply_linear_combination_ordered(
+    combination: LinearCombination,
+    operand: sp.Expr,
+    variable: sp.Symbol,
+    rules: Mapping[OperatorAtom, AtomicAction],
+    *,
+    integration_variable: sp.Symbol | None = None,
+) -> AppliedLinearCombination:
+    """Apply a linear combination while preserving ordered applied terms.
+
+    Each result term stores the original coefficient, the original ``Product``,
+    and the scalar expression obtained by applying that product to ``operand``.
+    Call ``as_expr`` only when a final SymPy ``Add`` projection is needed.
     """
 
     if not isinstance(combination, LinearCombination):
@@ -327,7 +384,7 @@ def apply_linear_combination(
             f"{type(combination).__name__}."
         )
 
-    scalar_terms: list[sp.Expr] = []
+    applied_terms: list[AppliedTerm] = []
     term_count = len(combination.terms)
     for zero_based_position, term in enumerate(combination.terms):
         try:
@@ -346,8 +403,14 @@ def apply_linear_combination(
                 term_count=term_count,
                 coefficient=term.coefficient,
             ) from exc
-        scalar_terms.append(term.coefficient * applied)
-    return sum(scalar_terms, sp.Integer(0))
+        applied_terms.append(
+            AppliedTerm(
+                coefficient=term.coefficient,
+                product=term.product,
+                expression=applied,
+            )
+        )
+    return AppliedLinearCombination(tuple(applied_terms))
 
 
 def _apply_linear_combination_term(
