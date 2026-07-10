@@ -13,6 +13,7 @@ from .derivations import FirstSchurDerivationTrace
 from .kernels import KernelCombination
 from .operators import G1, G2, LinearCombination, OperatorAtom, Product, Scalar, Term
 from .relations import ExactBlock, FirstSchurReduction
+from .relative_wiener_hopf import RelativeWienerHopfDerivationTrace
 
 
 OPERATOR_LATEX: dict[str, str] = {
@@ -36,6 +37,8 @@ SCALAR_FUNCTION_LATEX: dict[str, str] = {
     "chi_infinity": r"\chi_\infty",
     "rho1": r"\rho_1",
     "rho2": r"\rho_2",
+    "chi_plus": r"\chi_+",
+    "chi_minus": r"\chi_-",
 }
 
 SCALAR_SYMBOL_LATEX: dict[str, str] = {
@@ -103,6 +106,82 @@ class RenderedFirstSchurDerivation:
         """Concatenate the already-rendered formulas without document markup."""
 
         return "\n\n".join(step.latex for step in self.steps)
+
+
+@dataclass(frozen=True)
+class RenderedRelativeWienerHopfTrace:
+    """Ordered LaTeX presentation of one exact relative-WH trace."""
+
+    steps: tuple[RenderedDerivationStep, ...]
+
+    def as_latex(self) -> str:
+        return "\n\n".join(step.latex for step in self.steps)
+
+
+def render_relative_wiener_hopf_trace_latex(
+    trace: RelativeWienerHopfDerivationTrace,
+) -> RenderedRelativeWienerHopfTrace:
+    """Render stored L1/L2 trace data without recomputing mathematics."""
+
+    if not isinstance(trace, RelativeWienerHopfDerivationTrace):
+        raise TypeError("trace must be a RelativeWienerHopfDerivationTrace.")
+    l1 = trace.factorization
+    k, j = l1.k, l1.j
+    symbol = render_scalar_latex(l1.original_symbol)
+    left_symbol = render_scalar_latex(l1.left_symbol)
+    right_symbol = render_scalar_latex(l1.right_symbol)
+    kernel = render_scalar_latex(l1.integral_kernel)
+    scale = render_scalar_latex(trace.relative_dilation.scale)
+    integral = render_scalar_latex(trace.action.integral)
+    steps = (
+        RenderedDerivationStep(
+            "original_operator", "Original operator",
+            rf"\mathcal W_{{{k},{j}}}=V_{{\alpha_{k}}}W\!\left({symbol}\right)V_{{\alpha_{j}}}^{{-1}}",
+        ),
+        RenderedDerivationStep(
+            "conjugated_kernel", "Conjugated kernel",
+            rf"\mathcal K_{{{k},{j}}}(x,y)={kernel}",
+        ),
+        RenderedDerivationStep(
+            "relative_dilation", "Relative dilation",
+            rf"\beta_{{{k},{j}}}=\alpha_{j}^{{-1}}\circ\alpha_{k},\qquad "
+            rf"\beta_{{{k},{j}}}(x)={scale}x",
+        ),
+        RenderedDerivationStep(
+            "left_symbol", "Left symbol",
+            rf"b_{{{k},{j}}}^{{\mathrm L}}(\lambda)={left_symbol}",
+        ),
+        RenderedDerivationStep(
+            "left_factorization", "Left factorization",
+            rf"\mathcal W_{{{k},{j}}}=V_{{\beta_{{{k},{j}}}}}W\!\left(b_{{{k},{j}}}^{{\mathrm L}}\right)",
+        ),
+        RenderedDerivationStep(
+            "right_symbol", "Right symbol",
+            rf"b_{{{k},{j}}}^{{\mathrm R}}(\lambda)={right_symbol}",
+        ),
+        RenderedDerivationStep(
+            "right_factorization", "Right factorization",
+            rf"\mathcal W_{{{k},{j}}}=W\!\left(b_{{{k},{j}}}^{{\mathrm R}}\right)V_{{\beta_{{{k},{j}}}}}",
+        ),
+        RenderedDerivationStep(
+            "exact_identity", "Exact identity",
+            rf"\mathcal W_{{{k},{j}}}=V_{{\beta_{{{k},{j}}}}}W\!\left(b_{{{k},{j}}}^{{\mathrm L}}\right)"
+            rf"=W\!\left(b_{{{k},{j}}}^{{\mathrm R}}\right)V_{{\beta_{{{k},{j}}}}}",
+        ),
+        RenderedDerivationStep(
+            "symbol_correspondence", "Symbol correspondence",
+            rf"b_{{{k},{j}}}^{{\mathrm R}}(\lambda)=b_{{{k},{j}}}^{{\mathrm L}}"
+            rf"\!\left(\frac{{\gamma_{j}}}{{\gamma_{k}}}\lambda\right),\qquad "
+            rf"b_{{{k},{j}}}^{{\mathrm L}}(\lambda)=b_{{{k},{j}}}^{{\mathrm R}}"
+            rf"\!\left(\frac{{\gamma_{k}}}{{\gamma_{j}}}\lambda\right)",
+        ),
+        RenderedDerivationStep(
+            "common_action", "Common action",
+            rf"\left(\mathcal W_{{{k},{j}}}f\right)(x)=\int_0^\infty "
+            rf"\mathcal K_{{{k},{j}}}(x,y)f(y)\,dy={integral}",
+        ),
+    )
+    return RenderedRelativeWienerHopfTrace(steps)
 
 
 def render_operator_atom_latex(atom: OperatorAtom) -> str:

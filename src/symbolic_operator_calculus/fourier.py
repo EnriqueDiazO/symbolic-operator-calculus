@@ -23,6 +23,10 @@ class FourierEvaluationError(ValueError):
     """Raised when the Fourier calculation assumptions are insufficient."""
 
 
+class FourierScalingError(ValueError):
+    """Raised when a Fourier scaling lacks a positive real scale."""
+
+
 @dataclass(frozen=True)
 class InverseFourierIntegral:
     """Observable inverse-Fourier integral before and after evaluation."""
@@ -115,6 +119,43 @@ def inverse_prefactor() -> sp.Expr:
     """Return the inverse Fourier prefactor ``1/(2*pi)``."""
 
     return sp.Rational(1, 2) / sp.pi
+
+
+def scaled_convolution_kernel(
+    kernel: sp.Expr,
+    time: sp.Symbol,
+    scale: sp.Expr,
+) -> sp.Expr:
+    """Return ``a*h(a*t)`` for a declared positive real scale ``a``."""
+
+    _validate_fourier_scaling(kernel, time, scale)
+    return scale * kernel.xreplace({time: scale * time})
+
+
+def scaled_fourier_symbol(
+    symbol: sp.Expr,
+    frequency: sp.Symbol,
+    scale: sp.Expr,
+) -> sp.Expr:
+    """Return ``b(lambda/a)`` paired with ``a*h(a*t)`` by this convention."""
+
+    _validate_fourier_scaling(symbol, frequency, scale)
+    return symbol.xreplace({frequency: frequency / scale})
+
+
+def _validate_fourier_scaling(
+    expression: sp.Expr,
+    variable: sp.Symbol,
+    scale: sp.Expr,
+) -> None:
+    if not isinstance(expression, sp.Expr):
+        raise TypeError("expression must be a SymPy expression.")
+    if not isinstance(variable, sp.Symbol):
+        raise TypeError("the scaling variable must be a SymPy Symbol.")
+    if variable not in expression.free_symbols:
+        raise FourierScalingError("the expression must depend on its scaling variable.")
+    if scale.is_real is not True or scale.is_positive is not True:
+        raise FourierScalingError("Fourier scaling requires a positive real scale.")
 
 
 def bplus_symbol(
