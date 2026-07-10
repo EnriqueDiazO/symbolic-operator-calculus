@@ -60,6 +60,51 @@ class FormalRegularizer:
 
 
 @dataclass(frozen=True)
+class FirstSchurReduction:
+    """Exact metadata for ``diagonal - left * regularizer * right`` in m=2."""
+
+    diagonal: ExactBlock
+    left: ExactBlock
+    regularizer: FormalRegularizer
+    right: ExactBlock
+    offdiagonal_product_coefficient: int = -1
+
+    def __post_init__(self) -> None:
+        if not isinstance(self.diagonal, ExactBlock):
+            raise TypeError("diagonal must be an ExactBlock.")
+        if not isinstance(self.left, ExactBlock):
+            raise TypeError("left must be an ExactBlock.")
+        if not isinstance(self.regularizer, FormalRegularizer):
+            raise TypeError("regularizer must be a FormalRegularizer.")
+        if not isinstance(self.right, ExactBlock):
+            raise TypeError("right must be an ExactBlock.")
+        if self.diagonal != ExactBlock("A", 2, 2):
+            raise ValueError("diagonal must be exact block A22.")
+        if self.left != ExactBlock("A", 2, 1):
+            raise ValueError("left must be exact block A21.")
+        if self.regularizer.target != ExactBlock("A", 1, 1):
+            raise ValueError("regularizer must target exact block A11.")
+        if self.right != ExactBlock("A", 1, 2):
+            raise ValueError("right must be exact block A12.")
+        if self.offdiagonal_product_coefficient != -1:
+            raise ValueError("the first Schur reduction requires exterior sign -1.")
+
+
+@dataclass(frozen=True)
+class ModCompactSchurRelation:
+    """Modulo-compact relation from a Schur reduction to an AST model."""
+
+    exact: FirstSchurReduction
+    model: LinearCombination
+
+    def __post_init__(self) -> None:
+        if not isinstance(self.exact, FirstSchurReduction):
+            raise TypeError("exact must be a FirstSchurReduction.")
+        if not isinstance(self.model, LinearCombination):
+            raise TypeError("model must be a LinearCombination.")
+
+
+@dataclass(frozen=True)
 class WienerHopfModel:
     """Normalized Wiener-Hopf model for an exact block."""
 

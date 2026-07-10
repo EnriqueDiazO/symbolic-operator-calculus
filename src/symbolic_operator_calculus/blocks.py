@@ -16,11 +16,14 @@ from .operators import (
     Vtilde_alpha2,
     Wminus_21,
     Wplus_12,
+    main_expression,
 )
 from .relations import (
     ExactBlock,
+    FirstSchurReduction,
     FormalRegularizer,
     ModCompactRelation,
+    ModCompactSchurRelation,
     WienerHopfModel,
 )
 
@@ -67,6 +70,43 @@ def a11_formal_regularizer() -> FormalRegularizer:
     return FormalRegularizer(
         target=ExactBlock("A", 1, 1),
         operator=R11,
+    )
+
+
+def a22_first_schur_reduction() -> FirstSchurReduction:
+    """Return the exact metadata ``A22 - A21 R11 A12``."""
+
+    return FirstSchurReduction(
+        diagonal=ExactBlock("A", 2, 2),
+        left=ExactBlock("A", 2, 1),
+        regularizer=a11_formal_regularizer(),
+        right=ExactBlock("A", 1, 2),
+    )
+
+
+def a22_first_schur_correction() -> LinearCombination:
+    """Return the positive WH correction with its sign derived structurally."""
+
+    schur_sign = a22_first_schur_reduction().offdiagonal_product_coefficient
+    leading_a21_sign = a21_wh_model().expression.terms[0].coefficient
+    correction_sign = schur_sign * leading_a21_sign
+    return correction_sign * main_expression()
+
+
+def a22_first_schur_model() -> LinearCombination:
+    """Return ``A22`` followed by its positive four-term Schur correction."""
+
+    diagonal = a22_exact_operator()
+    correction = a22_first_schur_correction()
+    return LinearCombination(diagonal.terms + correction.terms)
+
+
+def a22_first_schur_mod_compact_relation() -> ModCompactSchurRelation:
+    """Relate exact ``A22^(1)`` to its operator model modulo compacta."""
+
+    return ModCompactSchurRelation(
+        exact=a22_first_schur_reduction(),
+        model=a22_first_schur_model(),
     )
 
 

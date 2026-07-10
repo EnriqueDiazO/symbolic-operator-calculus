@@ -35,6 +35,10 @@ from .blocks import (
     a21_mod_compact_relation,
     a21_wh_model,
     a22_exact_operator,
+    a22_first_schur_correction,
+    a22_first_schur_model,
+    a22_first_schur_mod_compact_relation,
+    a22_first_schur_reduction,
     pminus_operator,
     pplus_operator,
 )
@@ -87,8 +91,10 @@ from .operators import (
 )
 from .relations import (
     ExactBlock,
+    FirstSchurReduction,
     FormalRegularizer,
     ModCompactRelation,
+    ModCompactSchurRelation,
     WienerHopfModel,
 )
 from .substitution import (
@@ -104,6 +110,7 @@ __all__ = [
     "AppliedLinearCombination",
     "AppliedTerm",
     "ExactBlock",
+    "FirstSchurReduction",
     "FormalRegularizerAction",
     "FormalRegularizer",
     "FourierEvaluationError",
@@ -127,6 +134,7 @@ __all__ = [
     "MissingAtomicActionError",
     "MissingIntegrationVariableError",
     "ModCompactRelation",
+    "ModCompactSchurRelation",
     "MultiplicationAction",
     "OperatorAtom",
     "Product",
@@ -148,6 +156,10 @@ __all__ = [
     "a21_mod_compact_relation",
     "a21_wh_model",
     "a22_exact_operator",
+    "a22_first_schur_correction",
+    "a22_first_schur_model",
+    "a22_first_schur_mod_compact_relation",
+    "a22_first_schur_reduction",
     "apply_atom",
     "apply_combined_kernel_c22",
     "apply_linear_combination",
