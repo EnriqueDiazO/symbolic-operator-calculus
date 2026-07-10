@@ -18,10 +18,13 @@ from .blocks import (
 )
 from .kernels import (
     FirstSchurCorrectionFactorization,
+    KernelCombination,
     combined_kernel_c22,
     factor_first_schur_correction,
     m12_kernel,
+    m12_kernel_combination,
     m21_kernel,
+    m21_kernel_combination,
 )
 from .operators import LinearCombination, OperatorAtom, Scalar, main_expression
 from .relations import ModCompactRelation, ModCompactSchurRelation
@@ -59,6 +62,8 @@ class FirstSchurDerivationTrace:
     reduced_relation: ModCompactSchurRelation
     correction: LinearCombination
     factorization: FirstSchurCorrectionFactorization
+    m21_combination: KernelCombination
+    m12_combination: KernelCombination
     m21: sp.Expr
     m12: sp.Expr
     combined_kernel: sp.Integral
@@ -84,6 +89,10 @@ class FirstSchurDerivationTrace:
             raise DerivationTraceError(
                 "factorization must reference the trace correction."
             )
+        if self.m21 != self.m21_combination.as_expr():
+            raise DerivationTraceError("M21 must project its ordered combination.")
+        if self.m12 != self.m12_combination.as_expr():
+            raise DerivationTraceError("M12 must project its ordered combination.")
         if self.compact_action.relation != self.reduced_relation:
             raise DerivationTraceError(
                 "compact action and trace must share the reduced relation."
@@ -132,16 +141,18 @@ def build_first_schur_derivation_trace(
         ),
     )
     factorization = factor_first_schur_correction(correction)
-    m21 = m21_kernel(
+    m21_combination = m21_kernel_combination(
         output_variable,
         outer_variable,
         rules=resolved_rules,
     )
-    m12 = m12_kernel(
+    m12_combination = m12_kernel_combination(
         middle_variable,
         input_variable,
         rules=resolved_rules,
     )
+    m21 = m21_combination.as_expr()
+    m12 = m12_combination.as_expr()
     combined_kernel = combined_kernel_c22(
         output_variable,
         input_variable,
@@ -163,6 +174,8 @@ def build_first_schur_derivation_trace(
         reduced_relation=reduced_relation,
         correction=correction,
         factorization=factorization,
+        m21_combination=m21_combination,
+        m12_combination=m12_combination,
         m21=m21,
         m12=m12,
         combined_kernel=combined_kernel,
@@ -217,12 +230,24 @@ def _validate_derived_trace(
         rules=rules,
     ):
         raise DerivationTraceError("M21 is inconsistent with its variables.")
+    if trace.m21_combination != m21_kernel_combination(
+        trace.output_variable,
+        trace.outer_variable,
+        rules=rules,
+    ):
+        raise DerivationTraceError("ordered M21 combination is inconsistent.")
     if trace.m12 != m12_kernel(
         trace.middle_variable,
         trace.input_variable,
         rules=rules,
     ):
         raise DerivationTraceError("M12 is inconsistent with its variables.")
+    if trace.m12_combination != m12_kernel_combination(
+        trace.middle_variable,
+        trace.input_variable,
+        rules=rules,
+    ):
+        raise DerivationTraceError("ordered M12 combination is inconsistent.")
     if trace.combined_kernel != combined_kernel_c22(
         trace.output_variable,
         trace.input_variable,
@@ -241,4 +266,3 @@ def _validate_derived_trace(
     )
     if trace.compact_action != expected_action:
         raise DerivationTraceError("compact action is inconsistent with the trace.")
-

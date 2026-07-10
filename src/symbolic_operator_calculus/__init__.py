@@ -66,6 +66,7 @@ from .derivations import (
     FirstSchurDerivationTrace,
     build_first_schur_derivation_trace,
 )
+from .exporting import export_first_schur_derivation_tex
 from .kernels import (
     FirstSchurCorrectionFactorization,
     KernelCombination,
@@ -79,7 +80,9 @@ from .kernels import (
     extract_integral_kernel,
     factor_first_schur_correction,
     m12_kernel,
+    m12_kernel_combination,
     m21_kernel,
+    m21_kernel_combination,
 )
 from .operators import (
     G1,
@@ -110,6 +113,19 @@ from .schur import (
     CompactSchurActionError,
     FirstSchurCompactModelAction,
     apply_a22_first_schur_model_compact,
+)
+from .rendering import (
+    LatexRenderingError,
+    RenderedDerivationStep,
+    RenderedFirstSchurDerivation,
+    render_combined_kernel_action_latex,
+    render_first_schur_derivation_latex,
+    render_kernel_combination_latex,
+    render_linear_combination_latex,
+    render_operator_atom_latex,
+    render_product_latex,
+    render_scalar_latex,
+    render_term_latex,
 )
 from .substitution import (
     SafeSubstitutionError,
@@ -143,6 +159,7 @@ __all__ = [
     "KernelCombination",
     "KernelExtractionError",
     "KernelTerm",
+    "LatexRenderingError",
     "SchurFactorizationError",
     "LinearCombinationApplicationError",
     "R11",
@@ -162,6 +179,8 @@ __all__ = [
     "ProductApplicationError",
     "PrincipalValue",
     "PrincipalValueIntegralAction",
+    "RenderedDerivationStep",
+    "RenderedFirstSchurDerivation",
     "SafeSubstitutionError",
     "Term",
     "TransportedShiftAction",
@@ -194,6 +213,7 @@ __all__ = [
     "collect_bound_symbols",
     "combined_kernel_c22",
     "expand_ordered",
+    "export_first_schur_derivation_tex",
     "extract_applied_kernels",
     "extract_integral_kernel",
     "factor_first_schur_correction",
@@ -208,7 +228,9 @@ __all__ = [
     "localized_lminus_kernel",
     "localized_lplus_kernel",
     "m12_kernel",
+    "m12_kernel_combination",
     "m21_kernel",
+    "m21_kernel_combination",
     "main_expression",
     "mvp_atomic_rules",
     "negative_inverse_integral",
@@ -216,6 +238,14 @@ __all__ = [
     "positive_inverse_integral",
     "pminus_operator",
     "pplus_operator",
+    "render_first_schur_derivation_latex",
+    "render_combined_kernel_action_latex",
+    "render_kernel_combination_latex",
+    "render_linear_combination_latex",
+    "render_operator_atom_latex",
+    "render_product_latex",
+    "render_scalar_latex",
+    "render_term_latex",
     "substitute_free_variable",
     "time_variable",
 ]

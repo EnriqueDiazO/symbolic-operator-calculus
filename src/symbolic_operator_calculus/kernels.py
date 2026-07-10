@@ -10,6 +10,7 @@ import sympy as sp
 from .actions import (
     AppliedLinearCombination,
     AtomicAction,
+    apply_atom,
     apply_linear_combination_ordered,
     mvp_atomic_rules,
 )
@@ -39,6 +40,7 @@ class KernelTerm:
     coefficient: int | float | complex
     product: Product
     kernel: sp.Expr
+    ordered_factors: tuple[sp.Expr, ...] | None = None
 
     def as_expr(self) -> sp.Expr:
         """Project this ordered kernel term to a signed SymPy expression."""
@@ -220,19 +222,51 @@ def extract_applied_kernels(
     )
 
 
+def m12_kernel_combination(
+    left_variable: sp.Symbol,
+    input_variable: sp.Symbol,
+    *,
+    rules: Mapping[OperatorAtom, AtomicAction] | None = None,
+) -> KernelCombination:
+    """Derive the ordered M12 kernel terms from the right Schur factor."""
+
+    factorization = factor_first_schur_correction()
+    return _kernel_combination_from_factor(
+        factorization.right,
+        left_variable,
+        input_variable,
+        rules,
+    )
+
+
 def m12_kernel(
     left_variable: sp.Symbol,
     input_variable: sp.Symbol,
     *,
     rules: Mapping[OperatorAtom, AtomicAction] | None = None,
 ) -> sp.Expr:
-    """Derive ``M12`` by applying the right factor of the Schur correction."""
+    """Project the ordered M12 kernel combination to a scalar expression."""
 
-    factorization = factor_first_schur_correction()
-    return _kernel_expression_from_factor(
-        factorization.right,
+    return m12_kernel_combination(
         left_variable,
         input_variable,
+        rules=rules,
+    ).as_expr()
+
+
+def m21_kernel_combination(
+    output_variable: sp.Symbol,
+    right_variable: sp.Symbol,
+    *,
+    rules: Mapping[OperatorAtom, AtomicAction] | None = None,
+) -> KernelCombination:
+    """Derive the ordered M21 kernel terms from the left Schur factor."""
+
+    factorization = factor_first_schur_correction()
+    return _kernel_combination_from_factor(
+        factorization.left,
+        output_variable,
+        right_variable,
         rules,
     )
 
@@ -243,15 +277,13 @@ def m21_kernel(
     *,
     rules: Mapping[OperatorAtom, AtomicAction] | None = None,
 ) -> sp.Expr:
-    """Derive ``M21`` by applying the left factor of the Schur correction."""
+    """Project the ordered M21 kernel combination to a scalar expression."""
 
-    factorization = factor_first_schur_correction()
-    return _kernel_expression_from_factor(
-        factorization.left,
+    return m21_kernel_combination(
         output_variable,
         right_variable,
-        rules,
-    )
+        rules=rules,
+    ).as_expr()
 
 
 def c22_integrand(
@@ -352,6 +384,20 @@ def _kernel_expression_from_factor(
     input_variable: sp.Symbol,
     rules: Mapping[OperatorAtom, AtomicAction] | None,
 ) -> sp.Expr:
+    return _kernel_combination_from_factor(
+        factor,
+        output_variable,
+        input_variable,
+        rules,
+    ).as_expr()
+
+
+def _kernel_combination_from_factor(
+    factor: LinearCombination,
+    output_variable: sp.Symbol,
+    input_variable: sp.Symbol,
+    rules: Mapping[OperatorAtom, AtomicAction] | None,
+) -> KernelCombination:
     input_function = sp.Function("_schur_kernel_input")
     resolved_rules = mvp_atomic_rules() if rules is None else rules
     applied = apply_linear_combination_ordered(
@@ -361,12 +407,34 @@ def _kernel_expression_from_factor(
         resolved_rules,
         integration_variable=input_variable,
     )
-    return extract_applied_kernels(
+    extracted = extract_applied_kernels(
         applied,
         output_variable,
         input_function,
         input_variable,
-    ).as_expr()
+    )
+    ordered_terms: list[KernelTerm] = []
+    for term in extracted.terms:
+        leading_scalar = apply_atom(
+            term.product.factors[0],
+            sp.Integer(1),
+            output_variable,
+            resolved_rules,
+        )
+        remaining_kernel = term.kernel.extract_multiplicatively(leading_scalar)
+        if remaining_kernel is None:
+            raise KernelExtractionError(
+                "could not preserve the leading scalar action in kernel order."
+            )
+        ordered_terms.append(
+            KernelTerm(
+                coefficient=term.coefficient,
+                product=term.product,
+                kernel=term.kernel,
+                ordered_factors=(leading_scalar, remaining_kernel),
+            )
+        )
+    return KernelCombination(tuple(ordered_terms))
 
 
 def _resolve_c22_variables(
