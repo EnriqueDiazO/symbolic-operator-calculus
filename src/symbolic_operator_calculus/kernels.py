@@ -2,16 +2,34 @@
 
 from __future__ import annotations
 
+from collections.abc import Iterable, Mapping
 from dataclasses import dataclass
 
 import sympy as sp
 
-from .actions import AppliedLinearCombination
-from .operators import Product
+from .actions import (
+    AppliedLinearCombination,
+    AtomicAction,
+    apply_linear_combination_ordered,
+    mvp_atomic_rules,
+)
+from .blocks import a22_first_schur_correction
+from .operators import (
+    R11,
+    LinearCombination,
+    OperatorAtom,
+    Product,
+    Term,
+)
+from .substitution import collect_bound_symbols, fresh_symbol
 
 
 class KernelExtractionError(ValueError):
     """Raised when a scalar action is not a supported integral action."""
+
+
+class SchurFactorizationError(ValueError):
+    """Raised when the canonical first Schur correction cannot be factored."""
 
 
 @dataclass(frozen=True)
@@ -40,15 +58,99 @@ class KernelCombination:
         return sum((term.as_expr() for term in self.terms), sp.Integer(0))
 
 
-G1_scalar = sp.Function("G1")
-G2_scalar = sp.Function("G2")
-rho1 = sp.Function("rho1")
-rho2 = sp.Function("rho2")
-gamma1 = sp.Symbol("gamma1")
-gamma2 = sp.Symbol("gamma2")
-Lplus_12_kernel = sp.Function("Lplus_12")
-Lminus_21_kernel = sp.Function("Lminus_21")
+@dataclass(frozen=True)
+class FirstSchurCorrectionFactorization:
+    """Specific factorization ``left * R11 * right`` of the m=2 correction."""
+
+    correction: LinearCombination
+    left: LinearCombination
+    regularizer: OperatorAtom
+    right: LinearCombination
+
+
 R11_kernel = sp.Function("R11")
+
+
+def factor_first_schur_correction(
+    correction: LinearCombination | None = None,
+) -> FirstSchurCorrectionFactorization:
+    """Factor the canonical correction into its two sides around ``R11``."""
+
+    correction = (
+        a22_first_schur_correction() if correction is None else correction
+    )
+    if not isinstance(correction, LinearCombination):
+        raise SchurFactorizationError("correction must be a LinearCombination.")
+    if len(correction.terms) != 4:
+        raise SchurFactorizationError("the first Schur correction must have four terms.")
+
+    split_terms: list[tuple[Term, Product, Product]] = []
+    for term in correction.terms:
+        positions = [
+            index
+            for index, factor in enumerate(term.product.factors)
+            if factor is R11
+        ]
+        if len(positions) != 1:
+            raise SchurFactorizationError(
+                "each correction term must contain R11 exactly once."
+            )
+        position = positions[0]
+        prefix = Product(term.product.factors[:position])
+        suffix = Product(term.product.factors[position + 1 :])
+        if not prefix.factors or not suffix.factors:
+            raise SchurFactorizationError(
+                "R11 must have compatible nonempty factors on both sides."
+            )
+        split_terms.append((term, prefix, suffix))
+
+    prefixes = _unique_products(item[1] for item in split_terms)
+    suffixes = _unique_products(item[2] for item in split_terms)
+    if len(prefixes) != 2 or len(suffixes) != 2:
+        raise SchurFactorizationError(
+            "the correction must have two unique left and right products."
+        )
+    if correction.terms[0].coefficient != 1:
+        raise SchurFactorizationError(
+            "the canonical correction must have leading coefficient one."
+        )
+
+    coefficient_by_pair = {
+        (prefix, suffix): term.coefficient
+        for term, prefix, suffix in split_terms
+    }
+    expected_pairs = tuple(
+        (prefix, suffix) for prefix in prefixes for suffix in suffixes
+    )
+    actual_pairs = tuple((prefix, suffix) for _, prefix, suffix in split_terms)
+    if actual_pairs != expected_pairs or set(coefficient_by_pair) != set(expected_pairs):
+        raise SchurFactorizationError(
+            "correction terms do not form the ordered Cartesian product."
+        )
+
+    left = LinearCombination(
+        tuple(
+            Term(coefficient_by_pair[(prefix, suffixes[0])], prefix)
+            for prefix in prefixes
+        )
+    )
+    right = LinearCombination(
+        tuple(
+            Term(coefficient_by_pair[(prefixes[0], suffix)], suffix)
+            for suffix in suffixes
+        )
+    )
+    factorization = FirstSchurCorrectionFactorization(
+        correction=correction,
+        left=left,
+        regularizer=R11,
+        right=right,
+    )
+    if _expand_first_schur_factorization(factorization) != correction:
+        raise SchurFactorizationError(
+            "derived factors do not reconstruct the canonical correction."
+        )
+    return factorization
 
 
 def extract_integral_kernel(
@@ -118,23 +220,37 @@ def extract_applied_kernels(
     )
 
 
-def m12_kernel(left_variable: sp.Symbol, input_variable: sp.Symbol) -> sp.Expr:
-    """Return ``M_{1,2}(left_variable, input_variable)``."""
+def m12_kernel(
+    left_variable: sp.Symbol,
+    input_variable: sp.Symbol,
+    *,
+    rules: Mapping[OperatorAtom, AtomicAction] | None = None,
+) -> sp.Expr:
+    """Derive ``M12`` by applying the right factor of the Schur correction."""
 
-    return rho1(left_variable) * Lplus_12_kernel(gamma1 * left_variable, input_variable) - (
-        G1_scalar(left_variable) * Lplus_12_kernel(left_variable, input_variable)
+    factorization = factor_first_schur_correction()
+    return _kernel_expression_from_factor(
+        factorization.right,
+        left_variable,
+        input_variable,
+        rules,
     )
 
 
-def m21_kernel(output_variable: sp.Symbol, right_variable: sp.Symbol) -> sp.Expr:
-    """Return ``M_{2,1}(output_variable, right_variable)``."""
+def m21_kernel(
+    output_variable: sp.Symbol,
+    right_variable: sp.Symbol,
+    *,
+    rules: Mapping[OperatorAtom, AtomicAction] | None = None,
+) -> sp.Expr:
+    """Derive ``M21`` by applying the left factor of the Schur correction."""
 
-    return rho2(output_variable) * Lminus_21_kernel(
-        gamma2 * output_variable,
+    factorization = factor_first_schur_correction()
+    return _kernel_expression_from_factor(
+        factorization.left,
+        output_variable,
         right_variable,
-    ) - (
-        G2_scalar(output_variable)
-        * Lminus_21_kernel(output_variable, right_variable)
+        rules,
     )
 
 
@@ -143,13 +259,15 @@ def c22_integrand(
     outer_variable: sp.Symbol,
     middle_variable: sp.Symbol,
     input_variable: sp.Symbol,
+    *,
+    rules: Mapping[OperatorAtom, AtomicAction] | None = None,
 ) -> sp.Expr:
     """Return the scalar integrand ``M21 * R11 * M12``."""
 
     return (
-        m21_kernel(output_variable, outer_variable)
+        m21_kernel(output_variable, outer_variable, rules=rules)
         * R11_kernel(outer_variable, middle_variable)
-        * m12_kernel(middle_variable, input_variable)
+        * m12_kernel(middle_variable, input_variable, rules=rules)
     )
 
 
@@ -159,16 +277,21 @@ def combined_kernel_c22(
     *,
     outer_variable: sp.Symbol | None = None,
     middle_variable: sp.Symbol | None = None,
+    rules: Mapping[OperatorAtom, AtomicAction] | None = None,
 ) -> sp.Integral:
-    """Return the formal combined kernel ``C22(x, y)``."""
+    """Derive the combined kernel ``C22(x, y)`` using the selected rules."""
 
-    outer_variable = outer_variable or sp.Symbol("u")
-    middle_variable = middle_variable or sp.Symbol("v")
+    outer_variable, middle_variable = _resolve_c22_variables(
+        output_variable,
+        input_variable,
+        outer_variable,
+        middle_variable,
+    )
     return sp.Integral(
-        m21_kernel(output_variable, outer_variable)
+        m21_kernel(output_variable, outer_variable, rules=rules)
         * sp.Integral(
             R11_kernel(outer_variable, middle_variable)
-            * m12_kernel(middle_variable, input_variable),
+            * m12_kernel(middle_variable, input_variable, rules=rules),
             (middle_variable, 0, sp.oo),
         ),
         (outer_variable, 0, sp.oo),
@@ -182,16 +305,110 @@ def apply_combined_kernel_c22(
     *,
     outer_variable: sp.Symbol | None = None,
     middle_variable: sp.Symbol | None = None,
+    rules: Mapping[OperatorAtom, AtomicAction] | None = None,
 ) -> sp.Integral:
-    """Return the formal action ``Integral(C22(x, y) * f(y), dy)``."""
+    """Return the selected compact action ``Integral(C22(x,y) f(y), dy)``."""
 
     kernel = combined_kernel_c22(
         output_variable,
         input_variable,
         outer_variable=outer_variable,
         middle_variable=middle_variable,
+        rules=rules,
     )
     return sp.Integral(kernel * input_function(input_variable), (input_variable, 0, sp.oo))
+
+
+def _unique_products(products: Iterable[Product]) -> tuple[Product, ...]:
+    unique: list[Product] = []
+    for product in products:
+        if product not in unique:
+            unique.append(product)
+    return tuple(unique)
+
+
+def _expand_first_schur_factorization(
+    factorization: FirstSchurCorrectionFactorization,
+) -> LinearCombination:
+    return LinearCombination(
+        tuple(
+            Term(
+                left.coefficient * right.coefficient,
+                Product(
+                    left.product.factors
+                    + (factorization.regularizer,)
+                    + right.product.factors
+                ),
+            )
+            for left in factorization.left.terms
+            for right in factorization.right.terms
+        )
+    )
+
+
+def _kernel_expression_from_factor(
+    factor: LinearCombination,
+    output_variable: sp.Symbol,
+    input_variable: sp.Symbol,
+    rules: Mapping[OperatorAtom, AtomicAction] | None,
+) -> sp.Expr:
+    input_function = sp.Function("_schur_kernel_input")
+    resolved_rules = mvp_atomic_rules() if rules is None else rules
+    applied = apply_linear_combination_ordered(
+        factor,
+        input_function(output_variable),
+        output_variable,
+        resolved_rules,
+        integration_variable=input_variable,
+    )
+    return extract_applied_kernels(
+        applied,
+        output_variable,
+        input_function,
+        input_variable,
+    ).as_expr()
+
+
+def _resolve_c22_variables(
+    output_variable: sp.Symbol,
+    input_variable: sp.Symbol,
+    outer_variable: sp.Symbol | None,
+    middle_variable: sp.Symbol | None,
+) -> tuple[sp.Symbol, sp.Symbol]:
+    avoid = (
+        output_variable.free_symbols
+        | input_variable.free_symbols
+        | output_variable.atoms(sp.Symbol)
+        | input_variable.atoms(sp.Symbol)
+        | collect_bound_symbols(output_variable)
+        | collect_bound_symbols(input_variable)
+    )
+    outer_variable = _resolve_one_c22_variable(
+        "outer_variable",
+        outer_variable,
+        avoid,
+    )
+    avoid.add(outer_variable)
+    middle_variable = _resolve_one_c22_variable(
+        "middle_variable",
+        middle_variable,
+        avoid,
+    )
+    return outer_variable, middle_variable
+
+
+def _resolve_one_c22_variable(
+    name: str,
+    variable: sp.Symbol | None,
+    avoid: set[sp.Symbol],
+) -> sp.Symbol:
+    if variable is None:
+        return fresh_symbol(avoid)
+    if not isinstance(variable, sp.Symbol):
+        raise TypeError(f"{name} must be a SymPy Symbol.")
+    if variable in avoid:
+        raise ValueError(f"{name} collides with an existing symbol.")
+    return variable
 
 
 def _remove_input_integral(
