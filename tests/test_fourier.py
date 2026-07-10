@@ -170,3 +170,25 @@ def test_j17_b_symbols_use_half_line_weights_without_heaviside():
     assert bminus_symbol(d, lambda_) == sp.exp(d * lambda_)
     assert not bplus_symbol(d, lambda_).has(sp.Heaviside)
     assert not bminus_symbol(d, lambda_).has(sp.Heaviside)
+
+
+def test_original_b12_kernel_is_twice_the_normalized_positive_kernel():
+    d = positive_decay_symbol()
+    t = time_variable()
+    original_b12_kernel = 2 * kplus_kernel(t, d)
+
+    assert algebraically_equivalent(
+        original_b12_kernel,
+        1 / (sp.pi * (d - sp.I * t)),
+    )
+
+
+def test_original_b21_kernel_is_minus_twice_the_normalized_negative_kernel():
+    d = positive_decay_symbol()
+    t = time_variable()
+    original_b21_kernel = -2 * kminus_kernel(t, d)
+
+    assert algebraically_equivalent(
+        original_b21_kernel,
+        -1 / (sp.pi * (d + sp.I * t)),
+    )
