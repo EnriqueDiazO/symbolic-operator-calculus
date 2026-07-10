@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from .operators import LinearCombination, Product
+from .operators import LinearCombination, OperatorAtom, Product
 
 
 def _validate_family(family: object) -> str:
@@ -37,6 +37,26 @@ class ExactBlock:
             "column",
             _validate_positive_index("column", self.column),
         )
+
+
+@dataclass(frozen=True)
+class FormalRegularizer:
+    """Metadata associating a formal regularizer atom with an exact block.
+
+    This association records neither an exact inverse nor an oriented
+    product-identity relation.
+    """
+
+    target: ExactBlock
+    operator: OperatorAtom
+
+    def __post_init__(self) -> None:
+        if not isinstance(self.target, ExactBlock):
+            raise TypeError("target must be an ExactBlock.")
+        if not isinstance(self.operator, OperatorAtom):
+            raise TypeError("operator must be an OperatorAtom.")
+        if not self.operator.is_formal_regularizer:
+            raise ValueError("operator must be marked as a formal regularizer.")
 
 
 @dataclass(frozen=True)

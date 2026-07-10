@@ -9,6 +9,7 @@ from .operators import (
     G2,
     I,
     LinearCombination,
+    R11,
     S_Rplus,
     Term,
     Vtilde_alpha1,
@@ -16,7 +17,12 @@ from .operators import (
     Wminus_21,
     Wplus_12,
 )
-from .relations import ExactBlock, ModCompactRelation, WienerHopfModel
+from .relations import (
+    ExactBlock,
+    FormalRegularizer,
+    ModCompactRelation,
+    WienerHopfModel,
+)
 
 
 def pplus_operator() -> LinearCombination:
@@ -52,6 +58,15 @@ def a22_exact_operator() -> LinearCombination:
     return LinearCombination(
         tuple(Term(term.coefficient, Vtilde_alpha2 * term.product) for term in pplus.terms)
         + tuple(Term(term.coefficient, G2 * term.product) for term in pminus.terms)
+    )
+
+
+def a11_formal_regularizer() -> FormalRegularizer:
+    """Return the formal regularizer metadata associated with exact ``A11``."""
+
+    return FormalRegularizer(
+        target=ExactBlock("A", 1, 1),
+        operator=R11,
     )
 
 

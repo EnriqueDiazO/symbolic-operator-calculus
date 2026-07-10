@@ -29,6 +29,7 @@ from .actions import (
 )
 from .blocks import (
     a11_exact_operator,
+    a11_formal_regularizer,
     a12_mod_compact_relation,
     a12_wh_model,
     a21_mod_compact_relation,
@@ -86,6 +87,7 @@ from .operators import (
 )
 from .relations import (
     ExactBlock,
+    FormalRegularizer,
     ModCompactRelation,
     WienerHopfModel,
 )
@@ -103,6 +105,7 @@ __all__ = [
     "AppliedTerm",
     "ExactBlock",
     "FormalRegularizerAction",
+    "FormalRegularizer",
     "FourierEvaluationError",
     "G1",
     "G2",
@@ -139,6 +142,7 @@ __all__ = [
     "UnsupportedProductExpressionError",
     "WienerHopfModel",
     "a11_exact_operator",
+    "a11_formal_regularizer",
     "a12_mod_compact_relation",
     "a12_wh_model",
     "a21_mod_compact_relation",
