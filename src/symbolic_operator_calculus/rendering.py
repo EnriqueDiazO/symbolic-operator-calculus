@@ -229,7 +229,7 @@ def render_term_latex(term: Term, *, include_sign: bool = True) -> str:
     body = render_product_latex(term.product)
     coefficient = _coefficient_magnitude_latex(magnitude)
     rendered = body if coefficient == "1" else rf"{coefficient}\,{body}"
-    if include_sign and sign < 0:
+    if include_sign and sign == -1:
         return rf"- {rendered}"
     return rendered
 
@@ -244,9 +244,9 @@ def render_linear_combination_latex(combination: LinearCombination) -> str:
         sign, _ = _coefficient_sign_and_magnitude(term.coefficient)
         body = render_term_latex(term, include_sign=False)
         if index == 0:
-            pieces.append(rf"- {body}" if sign < 0 else body)
+            pieces.append(rf"- {body}" if sign == -1 else body)
         else:
-            pieces.append(rf" - {body}" if sign < 0 else rf" + {body}")
+            pieces.append(rf" - {body}" if sign == -1 else rf" + {body}")
     return "".join(pieces) if pieces else "0"
 
 
@@ -277,9 +277,9 @@ def render_kernel_combination_latex(combination: KernelCombination) -> str:
         coefficient = _coefficient_magnitude_latex(magnitude)
         body = scalar if coefficient == "1" else rf"{coefficient}\,{scalar}"
         if index == 0:
-            pieces.append(rf"- {body}" if sign < 0 else body)
+            pieces.append(rf"- {body}" if sign == -1 else body)
         else:
-            pieces.append(rf" - {body}" if sign < 0 else rf" + {body}")
+            pieces.append(rf" - {body}" if sign == -1 else rf" + {body}")
     return "".join(pieces) if pieces else "0"
 
 
@@ -525,9 +525,9 @@ def _render_applied_combination_latex(
             else rf"{coefficient}\,\left({scalar}\right)"
         )
         if index == 0:
-            pieces.append(rf"- {body}" if sign < 0 else body)
+            pieces.append(rf"- {body}" if sign == -1 else body)
         else:
-            pieces.append(rf" - {body}" if sign < 0 else rf" + {body}")
+            pieces.append(rf" - {body}" if sign == -1 else rf" + {body}")
     return "".join(pieces)
 
 
@@ -566,10 +566,10 @@ def _render_applied_term_lines(
     return tuple(lines)
 
 
-def _semantic_line_sign(index: int, sign: int) -> str:
+def _semantic_line_sign(index: int, sign: int | None) -> str:
     if index == 0:
-        return "- " if sign < 0 else ""
-    return r"{}- " if sign < 0 else r"{}+ "
+        return "- " if sign == -1 else ""
+    return r"{}- " if sign == -1 else r"{}+ "
 
 
 def _render_exact_block_latex(block: ExactBlock) -> str:
@@ -615,9 +615,9 @@ def _render_ungrouped_linear_combination_latex(
         if coefficient != "1":
             body = rf"{coefficient}\,{body}"
         if index == 0:
-            pieces.append(rf"- {body}" if sign < 0 else body)
+            pieces.append(rf"- {body}" if sign == -1 else body)
         else:
-            pieces.append(rf" - {body}" if sign < 0 else rf" + {body}")
+            pieces.append(rf" - {body}" if sign == -1 else rf" + {body}")
     return "".join(pieces)
 
 
@@ -644,9 +644,15 @@ def _scalar_symbol(symbol: sp.Symbol) -> str:
     return _StructuredScalarLatexPrinter().doprint(symbol)
 
 
-def _coefficient_sign_and_magnitude(coefficient: Scalar) -> tuple[int, Scalar]:
-    if isinstance(coefficient, complex) and coefficient.imag != 0:
-        raise LatexRenderingError("non-real term coefficients are unsupported.")
+def _coefficient_sign_and_magnitude(
+    coefficient: Scalar,
+) -> tuple[int | None, Scalar]:
+    if isinstance(coefficient, complex):
+        if coefficient.imag != 0:
+            if coefficient.real == 0 and coefficient.imag < 0:
+                return -1, -coefficient
+            return None, coefficient
+        coefficient = _real_complex_component(coefficient.real)
     if coefficient < 0:
         return -1, -coefficient
     return 1, coefficient
@@ -657,7 +663,28 @@ def _coefficient_magnitude_latex(coefficient: Scalar) -> str:
         return _StructuredScalarLatexPrinter().doprint(
             sp.Rational(coefficient.numerator, coefficient.denominator)
         )
+    if isinstance(coefficient, complex):
+        rendered = _StructuredScalarLatexPrinter().doprint(
+            _complex_scalar_expression(coefficient)
+        )
+        if coefficient.real != 0 and coefficient.imag != 0:
+            return rf"\left({rendered}\right)"
+        return rendered
     return _StructuredScalarLatexPrinter().doprint(sp.sympify(coefficient))
+
+
+def _real_complex_component(value: float) -> int | float:
+    return int(value) if value.is_integer() else value
+
+
+def _complex_scalar_expression(value: complex) -> sp.Expr:
+    real = _float_scalar_expression(value.real)
+    imaginary = _float_scalar_expression(value.imag)
+    return real + imaginary * sp.I
+
+
+def _float_scalar_expression(value: float) -> sp.Expr:
+    return sp.Integer(int(value)) if value.is_integer() else sp.Float(value)
 
 
 def _unit_sign_latex(sign: Scalar) -> str:

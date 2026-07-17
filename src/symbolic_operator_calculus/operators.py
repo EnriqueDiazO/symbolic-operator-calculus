@@ -9,6 +9,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from fractions import Fraction
+from math import isfinite
 from typing import TypeAlias
 
 Scalar: TypeAlias = int | float | complex | Fraction
@@ -29,8 +30,14 @@ def _is_zero_scalar(value: object) -> bool:
 def _checked_coefficient(coefficient: object) -> Scalar:
     if not _is_scalar(coefficient):
         raise TypeError(
-            "A term coefficient must be an int, float, complex, or Fraction."
+            "Term.coefficient must be an int, float, complex, or Fraction."
         )
+    if isinstance(coefficient, float) and not isfinite(coefficient):
+        raise ValueError("Term.coefficient must be finite.")
+    if isinstance(coefficient, complex) and not (
+        isfinite(coefficient.real) and isfinite(coefficient.imag)
+    ):
+        raise ValueError("Term.coefficient must be finite.")
     return coefficient
 
 

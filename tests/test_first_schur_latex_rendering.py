@@ -149,6 +149,97 @@ def test_structural_identity_terms_have_unambiguous_latex(coefficient, expected)
     assert render_term_latex(Term(coefficient, Product(()))) == expected
 
 
+@pytest.mark.parametrize(
+    ("coefficient", "expected"),
+    (
+        (1 + 0j, r"\widetilde V_{\alpha_1}"),
+        (-1 + 0j, r"- \widetilde V_{\alpha_1}"),
+        (2 + 0j, r"2\,\widetilde V_{\alpha_1}"),
+        (-2 + 0j, r"- 2\,\widetilde V_{\alpha_1}"),
+    ),
+)
+def test_real_complex_coefficients_render_like_real_numbers(coefficient, expected):
+    rendered = render_term_latex(Term(coefficient, Product((Vtilde_alpha1,))))
+
+    assert rendered == expected
+    assert "j" not in rendered
+
+
+@pytest.mark.parametrize(
+    ("coefficient", "expected"),
+    (
+        (1 + 2j, r"\left(1 + 2 i\right)\,\widetilde V_{\alpha_1}"),
+        (1 - 2j, r"\left(1 - 2 i\right)\,\widetilde V_{\alpha_1}"),
+        (-1 + 2j, r"\left(-1 + 2 i\right)\,\widetilde V_{\alpha_1}"),
+        (-1 - 2j, r"\left(-1 - 2 i\right)\,\widetilde V_{\alpha_1}"),
+        (2j, r"2 i\,\widetilde V_{\alpha_1}"),
+        (-2j, r"- 2 i\,\widetilde V_{\alpha_1}"),
+    ),
+)
+def test_nonreal_complex_coefficients_render_as_grouped_scalars(
+    coefficient,
+    expected,
+):
+    rendered = render_term_latex(Term(coefficient, Product((Vtilde_alpha1,))))
+
+    assert rendered == expected
+    assert "j" not in rendered
+
+
+def test_complex_linear_combination_is_ordered_and_unambiguous():
+    combination = LinearCombination(
+        (
+            Term(1, I),
+            Term(-1, Vtilde_alpha1),
+            Term(1 + 2j, Vtilde_alpha2),
+            Term(-1 + 2j, Wplus_12),
+            Term(2j, Wminus_21),
+        )
+    )
+
+    rendered = render_linear_combination_latex(combination)
+
+    assert rendered == (
+        r"I - \widetilde V_{\alpha_1}"
+        r" + \left(1 + 2 i\right)\,\widetilde V_{\alpha_2}"
+        r" + \left(-1 + 2 i\right)\,W^+_{1,2}"
+        r" + 2 i\,W^-_{2,1}"
+    )
+    assert "j" not in rendered
+
+
+def test_negative_imaginary_term_uses_an_external_combination_sign():
+    combination = LinearCombination((Term(1, I), Term(-2j, Vtilde_alpha1)))
+
+    assert render_linear_combination_latex(combination) == (
+        r"I - 2 i\,\widetilde V_{\alpha_1}"
+    )
+
+
+def test_complex_zero_term_renders_as_plain_zero():
+    rendered = render_term_latex(Term(0j, Product((Vtilde_alpha1,))))
+
+    assert rendered == "0"
+    assert "j" not in rendered
+    assert "I" not in rendered
+
+
+@pytest.mark.parametrize(
+    ("coefficient", "expected"),
+    (
+        (1, r"\widetilde V_{\alpha_1}"),
+        (-1, r"- \widetilde V_{\alpha_1}"),
+        (2, r"2\,\widetilde V_{\alpha_1}"),
+        (Fraction(1, 2), r"\frac{1}{2}\,\widetilde V_{\alpha_1}"),
+        (Fraction(-1, 2), r"- \frac{1}{2}\,\widetilde V_{\alpha_1}"),
+    ),
+)
+def test_real_coefficient_latex_regressions_remain_exact(coefficient, expected):
+    assert render_term_latex(
+        Term(coefficient, Product((Vtilde_alpha1,)))
+    ) == expected
+
+
 def test_renderer_does_not_remove_explicit_identity_factors():
     assert render_product_latex(Product((I, Vtilde_alpha1))) == (
         r"I\,\widetilde V_{\alpha_1}"

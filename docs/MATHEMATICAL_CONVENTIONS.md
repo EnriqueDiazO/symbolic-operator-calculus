@@ -151,6 +151,25 @@ La igualdad del AST es igualdad estructural, no equivalencia algebraica
 general. En particular, no se eliminan automaticamente factores `I` de
 `Product((I, A))`, `Product((A, I))` ni `Product((I, I))`.
 
+## Coeficientes del AST
+
+Los coeficientes del AST son numeros concretos de Python de tipo `int`,
+`float`, `complex` o `fractions.Fraction`. Los booleanos no son coeficientes,
+aunque `bool` sea una subclase de `int`. Todo coeficiente admitido debe ser
+finito; se rechazan `nan`, los infinitos y los complejos que tengan una parte
+real o imaginaria no finita.
+
+Los ceros de todos los tipos admitidos son validos y conservan su tipo dentro
+de un `Term`; el filtrado estructural vigente los elimina al construir una
+`LinearCombination`. Los complejos finitos son validos. Si su parte imaginaria
+es cero, se presentan como numeros reales; en otro caso se renderizan como un
+factor escalar LaTeX agrupado antes del producto de operadores.
+
+Los escalares y expresiones SymPy no forman parte del contrato de coeficientes
+del AST. Esta frontera mantiene coeficientes numericos concretos y hashables;
+el soporte para parametros simbolicos requiere una fase arquitectonica
+posterior.
+
 ## No conmutatividad
 
 Todos los operadores del MVP son no conmutativos. En general,
