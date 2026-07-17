@@ -34,6 +34,37 @@ def _checked_coefficient(coefficient: object) -> Scalar:
     return coefficient
 
 
+def _validated_nonempty_string(
+    value: object,
+    *,
+    class_name: str,
+    field_name: str,
+) -> str:
+    if not isinstance(value, str):
+        raise TypeError(
+            f"{class_name}.{field_name} must be a nonempty str; got "
+            f"{type(value).__name__}."
+        )
+    if not value.strip():
+        raise ValueError(f"{class_name}.{field_name} must be a nonempty str.")
+    return value
+
+
+def _tuple_from_iterable(
+    value: object,
+    *,
+    class_name: str,
+    field_name: str,
+) -> tuple[object, ...]:
+    try:
+        return tuple(value)
+    except TypeError as exc:
+        raise TypeError(
+            f"{class_name}.{field_name} must be an iterable; got "
+            f"{type(value).__name__}."
+        ) from exc
+
+
 def _unsupported_distribution() -> TypeError:
     return TypeError(
         "Products involving LinearCombination require distributivity and are "
@@ -47,6 +78,18 @@ class OperatorAtom:
 
     name: str
     kind: str = "operator"
+
+    def __post_init__(self) -> None:
+        _validated_nonempty_string(
+            self.name,
+            class_name="OperatorAtom",
+            field_name="name",
+        )
+        _validated_nonempty_string(
+            self.kind,
+            class_name="OperatorAtom",
+            field_name="kind",
+        )
 
     @property
     def is_commutative(self) -> bool:
@@ -106,13 +149,17 @@ class Product:
     factors: tuple[OperatorAtom, ...]
 
     def __post_init__(self) -> None:
-        factors = tuple(self.factors)
-        invalid = [factor for factor in factors if not isinstance(factor, OperatorAtom)]
-        if invalid:
-            raise TypeError(
-                "Product factors must be OperatorAtom instances; got "
-                f"{type(invalid[0]).__name__}."
-            )
+        factors = _tuple_from_iterable(
+            self.factors,
+            class_name="Product",
+            field_name="factors",
+        )
+        for factor in factors:
+            if not isinstance(factor, OperatorAtom):
+                raise TypeError(
+                    "Product.factors items must be OperatorAtom instances; got "
+                    f"{type(factor).__name__}."
+                )
         object.__setattr__(self, "factors", factors)
 
     @classmethod
@@ -164,13 +211,22 @@ class Product:
 
 @dataclass(frozen=True)
 class Term:
-    """A scalar coefficient multiplying an ordered product."""
+    """A scalar coefficient multiplying an ordered product.
+
+    An ``OperatorAtom`` is accepted as shorthand and stored as a one-factor
+    ``Product``.
+    """
 
     coefficient: Scalar
-    product: Product
+    product: Product | OperatorAtom
 
     def __post_init__(self) -> None:
         object.__setattr__(self, "coefficient", _checked_coefficient(self.coefficient))
+        if not isinstance(self.product, (OperatorAtom, Product)):
+            raise TypeError(
+                "Term.product must be an OperatorAtom or Product; got "
+                f"{type(self.product).__name__}."
+            )
         object.__setattr__(self, "product", Product.from_factor(self.product))
 
 
@@ -181,10 +237,21 @@ class LinearCombination:
     terms: tuple[Term, ...]
 
     def __post_init__(self) -> None:
+        terms = _tuple_from_iterable(
+            self.terms,
+            class_name="LinearCombination",
+            field_name="terms",
+        )
+        for term in terms:
+            if not isinstance(term, Term):
+                raise TypeError(
+                    "LinearCombination.terms items must be Term instances; got "
+                    f"{type(term).__name__}."
+                )
         object.__setattr__(
             self,
             "terms",
-            tuple(term for term in self.terms if term.coefficient != 0),
+            tuple(term for term in terms if term.coefficient != 0),
         )
 
     @classmethod
