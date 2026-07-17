@@ -1,6 +1,8 @@
+import pytest
 import sympy as sp
 
 from symbolic_operator_calculus import (
+    FourierEvaluationError,
     bminus_symbol,
     bplus_symbol,
     forward_exponential,
@@ -191,4 +193,130 @@ def test_original_b21_kernel_is_minus_twice_the_normalized_negative_kernel():
     assert algebraically_equivalent(
         original_b21_kernel,
         -1 / (sp.pi * (d + sp.I * t)),
+    )
+
+
+def test_decay_default_is_used_only_when_argument_is_none():
+    lambda_ = frequency_variable()
+    default = positive_decay_symbol()
+
+    assert bplus_symbol(None, lambda_) == sp.exp(-default * lambda_)
+    assert bminus_symbol(None, lambda_) == sp.exp(default * lambda_)
+    assert positive_inverse_integral(decay=None).decay_parameter == default
+    assert negative_inverse_integral(decay=None).decay_parameter == default
+    assert default.is_real is True
+    assert default.is_positive is True
+
+
+@pytest.mark.parametrize(
+    "decay",
+    [
+        1,
+        2.5,
+        sp.Integer(2),
+        sp.Rational(3, 2),
+        sp.Symbol("d", positive=True),
+        sp.exp(sp.Symbol("r", real=True)),
+    ],
+)
+def test_positive_explicit_decay_is_preserved(decay):
+    lambda_ = frequency_variable()
+    expected_decay = sp.sympify(decay)
+
+    assert bplus_symbol(decay, lambda_) == sp.exp(-expected_decay * lambda_)
+    assert bminus_symbol(decay, lambda_) == sp.exp(expected_decay * lambda_)
+    assert positive_inverse_integral(decay=decay).decay_parameter == expected_decay
+    assert negative_inverse_integral(decay=decay).decay_parameter == expected_decay
+
+
+def test_explicit_positive_symbol_is_not_replaced_by_default():
+    lambda_ = frequency_variable()
+    explicit_decay = sp.Symbol("delta", positive=True)
+    result = bplus_symbol(explicit_decay, lambda_)
+
+    assert result.has(explicit_decay)
+    assert not result.has(positive_decay_symbol())
+
+
+@pytest.mark.parametrize("decay", [0, 0.0, sp.Integer(0)])
+@pytest.mark.parametrize(
+    "consumer",
+    [
+        bplus_symbol,
+        bminus_symbol,
+        lambda value: positive_inverse_integral(decay=value),
+        lambda value: negative_inverse_integral(decay=value),
+    ],
+)
+def test_zero_decay_is_rejected_by_public_fourier_constructors(decay, consumer):
+    with pytest.raises(FourierEvaluationError):
+        consumer(decay)
+
+
+def test_explicit_zero_is_never_replaced_by_positive_default():
+    lambda_ = frequency_variable()
+
+    with pytest.raises(FourierEvaluationError):
+        bplus_symbol(sp.Integer(0), lambda_)
+
+
+@pytest.mark.parametrize("decay", [-1, -0.5, sp.Integer(-2)])
+def test_negative_decay_is_rejected(decay):
+    with pytest.raises(FourierEvaluationError):
+        bplus_symbol(decay)
+
+
+@pytest.mark.parametrize("decay", [1 + 2j, sp.I])
+def test_nonreal_decay_is_rejected(decay):
+    with pytest.raises(FourierEvaluationError):
+        bminus_symbol(decay)
+
+
+@pytest.mark.parametrize(
+    "decay",
+    [
+        float("nan"),
+        float("inf"),
+        float("-inf"),
+        sp.nan,
+        sp.oo,
+        -sp.oo,
+    ],
+)
+def test_nonfinite_decay_is_rejected(decay):
+    with pytest.raises(FourierEvaluationError):
+        positive_inverse_integral(decay=decay)
+
+
+@pytest.mark.parametrize(
+    "decay",
+    [
+        sp.Symbol("d"),
+        sp.Symbol("d", negative=True),
+        sp.Symbol("d", zero=True),
+        sp.Symbol("d", real=False),
+    ],
+)
+def test_incompatible_or_unknown_decay_assumptions_are_rejected(decay):
+    with pytest.raises(FourierEvaluationError):
+        negative_inverse_integral(decay=decay)
+
+
+@pytest.mark.parametrize("decay", [True, "1", [1], object()])
+def test_incompatible_decay_types_are_rejected(decay):
+    with pytest.raises(TypeError):
+        bplus_symbol(decay)
+
+
+def test_positive_explicit_decay_keeps_normalized_kernel_formulas():
+    d = sp.Symbol("delta", positive=True)
+    t = time_variable()
+
+    assert algebraically_equivalent(
+        kplus_kernel(t, d),
+        1 / (2 * sp.pi * (d - sp.I * t)),
+    )
+    assert algebraically_equivalent(
+        kminus_kernel(t, d),
+        1 / (2 * sp.pi * (d + sp.I * t)),
     )

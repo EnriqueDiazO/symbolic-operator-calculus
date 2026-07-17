@@ -19,6 +19,9 @@ from dataclasses import dataclass
 import sympy as sp
 
 
+_DecayParameter = int | float | complex | sp.Expr
+
+
 class FourierEvaluationError(ValueError):
     """Raised when the Fourier calculation assumptions are insufficient."""
 
@@ -36,7 +39,7 @@ class InverseFourierIntegral:
     integration_variable: sp.Symbol
     lower_limit: sp.Expr
     upper_limit: sp.Expr
-    decay_parameter: sp.Symbol
+    decay_parameter: sp.Expr
     time_variable: sp.Expr
 
     @property
@@ -68,10 +71,7 @@ class InverseFourierIntegral:
     def evaluate(self) -> sp.Expr:
         """Evaluate after checking the explicit positive-decay hypothesis."""
 
-        if not self.decay_parameter.is_real or not self.decay_parameter.is_positive:
-            raise FourierEvaluationError(
-                "Fourier kernel evaluation requires a real positive decay parameter."
-            )
+        _resolve_positive_decay(self.decay_parameter)
         return self.integral.doit(conds="none")
 
 
@@ -91,6 +91,35 @@ def positive_decay_symbol() -> sp.Symbol:
     """Return the real positive decay parameter ``d``."""
 
     return sp.Symbol("d", real=True, positive=True)
+
+
+def _resolve_positive_decay(decay: _DecayParameter | None) -> sp.Expr:
+    """Return a finite real positive decay, defaulting only for ``None``."""
+
+    if decay is None:
+        return positive_decay_symbol()
+    if isinstance(decay, bool) or not isinstance(
+        decay,
+        (int, float, complex, sp.Expr),
+    ):
+        raise TypeError(
+            "decay must be a Python numeric scalar or a SymPy expression."
+        )
+
+    resolved = sp.sympify(decay)
+    if resolved.is_finite is not True:
+        raise FourierEvaluationError(
+            "Fourier decay must be provably finite."
+        )
+    if resolved.is_real is not True:
+        raise FourierEvaluationError(
+            "Fourier decay must be provably real."
+        )
+    if resolved.is_positive is not True:
+        raise FourierEvaluationError(
+            "Fourier decay must be provably positive."
+        )
+    return resolved
 
 
 def forward_exponential(
@@ -159,36 +188,36 @@ def _validate_fourier_scaling(
 
 
 def bplus_symbol(
-    decay: sp.Symbol | None = None,
+    decay: _DecayParameter | None = None,
     frequency: sp.Symbol | None = None,
 ) -> sp.Expr:
     """Return ``exp(-d*lambda)`` on the positive half-line."""
 
-    decay = decay or positive_decay_symbol()
+    decay = _resolve_positive_decay(decay)
     frequency = frequency or frequency_variable()
     return sp.exp(-decay * frequency)
 
 
 def bminus_symbol(
-    decay: sp.Symbol | None = None,
+    decay: _DecayParameter | None = None,
     frequency: sp.Symbol | None = None,
 ) -> sp.Expr:
     """Return ``exp(d*lambda)`` on the negative half-line."""
 
-    decay = decay or positive_decay_symbol()
+    decay = _resolve_positive_decay(decay)
     frequency = frequency or frequency_variable()
     return sp.exp(decay * frequency)
 
 
 def positive_inverse_integral(
     time: sp.Expr | None = None,
-    decay: sp.Symbol | None = None,
+    decay: _DecayParameter | None = None,
     frequency: sp.Symbol | None = None,
 ) -> InverseFourierIntegral:
     """Build the unevaluated positive inverse-Fourier integral."""
 
     time = time if time is not None else time_variable()
-    decay = decay or positive_decay_symbol()
+    decay = _resolve_positive_decay(decay)
     frequency = frequency or frequency_variable()
     symbol_expression = bplus_symbol(decay, frequency)
     return InverseFourierIntegral(
@@ -204,13 +233,13 @@ def positive_inverse_integral(
 
 def negative_inverse_integral(
     time: sp.Expr | None = None,
-    decay: sp.Symbol | None = None,
+    decay: _DecayParameter | None = None,
     frequency: sp.Symbol | None = None,
 ) -> InverseFourierIntegral:
     """Build the unevaluated negative inverse-Fourier integral."""
 
     time = time if time is not None else time_variable()
-    decay = decay or positive_decay_symbol()
+    decay = _resolve_positive_decay(decay)
     frequency = frequency or frequency_variable()
     symbol_expression = bminus_symbol(decay, frequency)
     return InverseFourierIntegral(
@@ -226,7 +255,7 @@ def negative_inverse_integral(
 
 def kplus_kernel(
     time: sp.Expr | None = None,
-    decay: sp.Symbol | None = None,
+    decay: _DecayParameter | None = None,
     frequency: sp.Symbol | None = None,
 ) -> sp.Expr:
     """Evaluate ``K^+_{1,2}(t)`` from its inverse-Fourier integral."""
@@ -237,7 +266,7 @@ def kplus_kernel(
 
 def kminus_kernel(
     time: sp.Expr | None = None,
-    decay: sp.Symbol | None = None,
+    decay: _DecayParameter | None = None,
     frequency: sp.Symbol | None = None,
 ) -> sp.Expr:
     """Evaluate ``K^-_{2,1}(t)`` from its inverse-Fourier integral."""
@@ -250,7 +279,7 @@ def localized_lplus_kernel(
     output_variable: sp.Expr,
     input_variable: sp.Expr,
     *,
-    decay: sp.Symbol | None = None,
+    decay: _DecayParameter | None = None,
 ) -> sp.Expr:
     """Return formal ``L^+_{1,2}(x,y)`` using ``Kplus(x-y)``."""
 
@@ -266,7 +295,7 @@ def localized_lminus_kernel(
     output_variable: sp.Expr,
     input_variable: sp.Expr,
     *,
-    decay: sp.Symbol | None = None,
+    decay: _DecayParameter | None = None,
 ) -> sp.Expr:
     """Return formal ``L^-_{2,1}(x,y)`` using ``Kminus(x-y)``."""
 
