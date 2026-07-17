@@ -329,6 +329,37 @@ registra como evidencia ejecutable derivada. Esta evidencia es distinta de
 `RelativeWienerHopfIdentity.exact`, que continua significando coherencia
 estructural y no depende de las variables elegidas para aplicar los productos.
 
+## Correspondencias Fourier de símbolos relativos
+
+Bajo la convención Fourier del proyecto, para una escala positiva \(a\),
+
+\[
+h_a(t)=a h(at)
+\quad\Longleftrightarrow\quad
+b_a(\lambda)=b(\lambda/a).
+\]
+
+Por tanto, las colocaciones izquierda y derecha del operador relativo cumplen
+
+\[
+b^{\mathrm L}_{k,j}(\lambda)
+=b_{k,j}(\lambda/\gamma_j),
+\qquad
+b^{\mathrm R}_{k,j}(\lambda)
+=b_{k,j}(\lambda/\gamma_k).
+\]
+
+Estas correspondencias se verifican reconstruyendo los dos símbolos desde el
+símbolo original y los dos kernels escalados desde el kernel original. Los
+resultados calculados se comparan algebraicamente con los campos almacenados
+por L1. La evidencia `correspondences_verified` es inmutable y derivada; no es
+un alias de esos campos.
+
+Las tres evidencias tienen significados distintos: `identity.exact` certifica
+la coherencia estructural de los productos, `actions_verified` certifica la
+igualdad de sus acciones normalizadas y `correspondences_verified` certifica
+las correspondencias Fourier reconstruidas independientemente.
+
 ## Intervalos de integracion
 
 Salvo que se indique lo contrario, los operadores integrales del MVP integran

@@ -78,6 +78,7 @@ from .relative_wiener_hopf import (
     OrderedRelativeOperatorProduct,
     RelativeProductAction,
     RelativeProductActionVerification,
+    RelativeSymbolCorrespondenceVerification,
     RelativeWienerHopfAction,
     RelativeWienerHopfDerivationTrace,
     RelativeWienerHopfIdentity,
@@ -86,6 +87,7 @@ from .relative_wiener_hopf import (
     apply_relative_factor,
     build_relative_wiener_hopf_trace,
     verify_relative_product_actions,
+    verify_relative_symbol_correspondences,
 )
 from .derivations import (
     DerivationTraceError,
@@ -225,6 +227,7 @@ __all__ = [
     "OrderedRelativeOperatorProduct",
     "RelativeProductAction",
     "RelativeProductActionVerification",
+    "RelativeSymbolCorrespondenceVerification",
     "RelativeWienerHopfAction",
     "RelativeWienerHopfDerivationTrace",
     "RelativeWienerHopfIdentity",
@@ -304,4 +307,5 @@ __all__ = [
     "substitute_free_variable",
     "time_variable",
     "verify_relative_product_actions",
+    "verify_relative_symbol_correspondences",
 ]

@@ -743,6 +743,315 @@ class RelativeProductActionVerification:
 
 
 @dataclass(frozen=True)
+class RelativeSymbolCorrespondenceVerification:
+    """Independent Fourier-scaling evidence for both relative placements."""
+
+    factorization: DilationConjugatedWienerHopfFactorization
+    pair: tuple[int, int]
+    frequency_variable: sp.Symbol
+    left_scale: sp.Expr
+    right_scale: sp.Expr
+    computed_left_symbol: sp.Expr
+    stored_left_symbol: sp.Expr
+    computed_right_symbol: sp.Expr
+    stored_right_symbol: sp.Expr
+    computed_left_kernel: sp.Expr
+    stored_left_kernel: sp.Expr
+    computed_right_kernel: sp.Expr
+    stored_right_kernel: sp.Expr
+    left_symbol_verified: bool = field(init=False, default=True)
+    right_symbol_verified: bool = field(init=False, default=True)
+    left_kernel_verified: bool = field(init=False, default=True)
+    right_kernel_verified: bool = field(init=False, default=True)
+    correspondences_verified: bool = field(init=False, default=True)
+
+    def __post_init__(self) -> None:
+        model = _validated_symbol_factorization(self.factorization)
+        if (
+            type(self.pair) is not tuple
+            or len(self.pair) != 2
+            or any(type(index) is not int for index in self.pair)
+        ):
+            raise TypeError("pair must be a two-item tuple of integer indices.")
+        if self.pair != (model.k, model.j):
+            raise RelativeWienerHopfError(
+                "pair is inconsistent with the stored L1 factorization."
+            )
+        _validate_verification_frequency(self.frequency_variable)
+        _require_algebraically_equivalent(
+            "left_scale",
+            self.left_scale,
+            model.gamma_j,
+        )
+        _require_algebraically_equivalent(
+            "right_scale",
+            self.right_scale,
+            model.gamma_k,
+        )
+
+        expected_stored_left_symbol = substitute_free_variable(
+            model.left_symbol,
+            model.frequency_variable,
+            self.frequency_variable,
+        )
+        expected_stored_right_symbol = substitute_free_variable(
+            model.right_symbol,
+            model.frequency_variable,
+            self.frequency_variable,
+        )
+        expected_computed_left_symbol = _reconstruct_scaled_relative_symbol(
+            model,
+            self.frequency_variable,
+            self.left_scale,
+        )
+        expected_computed_right_symbol = _reconstruct_scaled_relative_symbol(
+            model,
+            self.frequency_variable,
+            self.right_scale,
+        )
+        expected_computed_left_kernel = scaled_convolution_kernel(
+            model.original_kernel,
+            model.time_variable,
+            self.left_scale,
+        )
+        expected_computed_right_kernel = scaled_convolution_kernel(
+            model.original_kernel,
+            model.time_variable,
+            self.right_scale,
+        )
+        comparisons = (
+            (
+                "stored_left_symbol",
+                self.stored_left_symbol,
+                expected_stored_left_symbol,
+            ),
+            (
+                "stored_right_symbol",
+                self.stored_right_symbol,
+                expected_stored_right_symbol,
+            ),
+            (
+                "computed_left_symbol",
+                self.computed_left_symbol,
+                expected_computed_left_symbol,
+            ),
+            (
+                "computed_right_symbol",
+                self.computed_right_symbol,
+                expected_computed_right_symbol,
+            ),
+            (
+                "stored_left_kernel",
+                self.stored_left_kernel,
+                model.left_convolution_kernel,
+            ),
+            (
+                "stored_right_kernel",
+                self.stored_right_kernel,
+                model.right_convolution_kernel,
+            ),
+            (
+                "computed_left_kernel",
+                self.computed_left_kernel,
+                expected_computed_left_kernel,
+            ),
+            (
+                "computed_right_kernel",
+                self.computed_right_kernel,
+                expected_computed_right_kernel,
+            ),
+            (
+                "left symbol correspondence",
+                self.computed_left_symbol,
+                self.stored_left_symbol,
+            ),
+            (
+                "right symbol correspondence",
+                self.computed_right_symbol,
+                self.stored_right_symbol,
+            ),
+            (
+                "left kernel correspondence",
+                self.computed_left_kernel,
+                self.stored_left_kernel,
+            ),
+            (
+                "right kernel correspondence",
+                self.computed_right_kernel,
+                self.stored_right_kernel,
+            ),
+        )
+        for name, actual, expected in comparisons:
+            _require_algebraically_equivalent(name, actual, expected)
+
+
+def verify_relative_symbol_correspondences(
+    factorization_or_identity: (
+        DilationConjugatedWienerHopfFactorization
+        | RelativeWienerHopfIdentity
+    ),
+    *,
+    frequency_variable: sp.Symbol | None = None,
+) -> RelativeSymbolCorrespondenceVerification:
+    """Reconstruct and verify both L1 symbol/kernel scaling correspondences."""
+
+    if isinstance(factorization_or_identity, RelativeWienerHopfIdentity):
+        model = _validate_relative_product_shape(
+            factorization_or_identity.original,
+            "original",
+        )
+    elif isinstance(
+        factorization_or_identity,
+        DilationConjugatedWienerHopfFactorization,
+    ):
+        model = factorization_or_identity
+    else:
+        raise TypeError(
+            "factorization_or_identity must be a relative factorization or identity."
+        )
+    model = _validated_symbol_factorization(model)
+    frequency = (
+        model.frequency_variable
+        if frequency_variable is None
+        else frequency_variable
+    )
+    _validate_verification_frequency(frequency)
+
+    computed_left_symbol = _reconstruct_scaled_relative_symbol(
+        model,
+        frequency,
+        model.gamma_j,
+    )
+    computed_right_symbol = _reconstruct_scaled_relative_symbol(
+        model,
+        frequency,
+        model.gamma_k,
+    )
+    computed_left_kernel = scaled_convolution_kernel(
+        model.original_kernel,
+        model.time_variable,
+        model.gamma_j,
+    )
+    computed_right_kernel = scaled_convolution_kernel(
+        model.original_kernel,
+        model.time_variable,
+        model.gamma_k,
+    )
+    return RelativeSymbolCorrespondenceVerification(
+        factorization=model,
+        pair=(model.k, model.j),
+        frequency_variable=frequency,
+        left_scale=model.gamma_j,
+        right_scale=model.gamma_k,
+        computed_left_symbol=computed_left_symbol,
+        stored_left_symbol=substitute_free_variable(
+            model.left_symbol,
+            model.frequency_variable,
+            frequency,
+        ),
+        computed_right_symbol=computed_right_symbol,
+        stored_right_symbol=substitute_free_variable(
+            model.right_symbol,
+            model.frequency_variable,
+            frequency,
+        ),
+        computed_left_kernel=computed_left_kernel,
+        stored_left_kernel=model.left_convolution_kernel,
+        computed_right_kernel=computed_right_kernel,
+        stored_right_kernel=model.right_convolution_kernel,
+    )
+
+
+def _validated_symbol_factorization(
+    factorization: object,
+) -> DilationConjugatedWienerHopfFactorization:
+    if not isinstance(
+        factorization,
+        DilationConjugatedWienerHopfFactorization,
+    ):
+        raise TypeError(
+            "factorization must be a DilationConjugatedWienerHopfFactorization."
+        )
+    required_fields = (
+        "k",
+        "j",
+        "gamma_k",
+        "gamma_j",
+        "time_variable",
+        "frequency_variable",
+        "original_kernel",
+        "original_symbol",
+        "left_convolution_kernel",
+        "left_symbol",
+        "right_convolution_kernel",
+        "right_symbol",
+    )
+    for name in required_fields:
+        if not hasattr(factorization, name):
+            raise RelativeWienerHopfError(
+                f"factorization is missing required field {name!r}."
+            )
+    return factorization
+
+
+def _validate_verification_frequency(frequency: object) -> None:
+    if not isinstance(frequency, sp.Symbol):
+        raise TypeError("frequency_variable must be a SymPy Symbol.")
+    if frequency.is_real is not True:
+        raise RelativeWienerHopfError(
+            "frequency_variable must be a real SymPy Symbol."
+        )
+
+
+def _reconstruct_scaled_relative_symbol(
+    model: DilationConjugatedWienerHopfFactorization,
+    frequency: sp.Symbol,
+    scale: sp.Expr,
+) -> sp.Expr:
+    original_symbol = substitute_free_variable(
+        model.original_symbol,
+        model.frequency_variable,
+        frequency,
+    )
+    scaled_symbol = scaled_fourier_symbol(
+        original_symbol,
+        frequency,
+        scale,
+    )
+    indicator = chi_plus if model.k < model.j else chi_minus
+    raw_indicator = indicator(frequency / scale)
+    if not scaled_symbol.has(raw_indicator):
+        raise RelativeWienerHopfError(
+            "the reconstructed symbol lost its half-line indicator."
+        )
+    halfline_indicator_is_scale_invariant(
+        "plus" if model.k < model.j else "minus",
+        frequency,
+        scale,
+    )
+    return scaled_symbol.xreplace({raw_indicator: indicator(frequency)})
+
+
+def _require_algebraically_equivalent(
+    name: str,
+    actual: object,
+    expected: object,
+) -> None:
+    if not isinstance(actual, sp.Expr) or not isinstance(expected, sp.Expr):
+        raise TypeError(f"{name} must compare two SymPy expressions.")
+    if actual == expected:
+        return
+    try:
+        equivalent = sp.simplify(actual - expected) == 0
+    except (TypeError, ValueError):
+        equivalent = False
+    if not equivalent:
+        raise RelativeWienerHopfError(
+            f"{name} is inconsistent with the independently scaled L1 model."
+        )
+
+
+@dataclass(frozen=True)
 class RelativeWienerHopfDerivationTrace:
     """E2E trace built solely from one verified L1 factorization."""
 
