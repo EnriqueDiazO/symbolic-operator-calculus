@@ -29,6 +29,17 @@ the stored symbol-correspondence fields. Those fields remain aliases of the L1
 right and left symbols; they are not an independent algebraic verification.
 The common action is one half-line integral using the stored conjugated kernel.
 
+A3.1 added the structural invariants that make those three products safe to
+construct. A3.2 additionally evaluates each product independently, applying its
+factors from right to left and using the convolution kernel associated with its
+own placement. The resulting direct actions are normalized by explicit,
+shape-specific changes of variable; their computed kernels are then compared
+with each other and with the L1 conjugated kernel. The stored common action is
+therefore retained as a compatibility reference rather than the only executable
+representation. `exact` remains structural, while `actions_verified` is derived
+from this independent evaluation. Full independent Fourier-symbol
+correspondences remain reserved for A3.3.
+
 render_relative_wiener_hopf_trace_latex accepts only the completed trace and
 returns ten ordered steps. It calculates no symbols or kernels.
 

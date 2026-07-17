@@ -2,12 +2,18 @@
 
 from __future__ import annotations
 
+from collections.abc import Iterable
 from dataclasses import dataclass, field
 from typing import Literal
 
 import sympy as sp
 
 from .fourier import scaled_convolution_kernel, scaled_fourier_symbol
+from .substitution import (
+    collect_bound_symbols,
+    fresh_symbol,
+    substitute_free_variable,
+)
 
 
 class RelativeWienerHopfError(ValueError):
@@ -640,6 +646,103 @@ class RelativeWienerHopfAction:
 
 
 @dataclass(frozen=True)
+class RelativeProductAction:
+    """Direct and normalized actions computed from one canonical product."""
+
+    product: OrderedRelativeOperatorProduct
+    operand: sp.Expr
+    direct_expression: sp.Integral
+    normalized_expression: sp.Integral
+    output_variable: sp.Symbol
+    input_variable: sp.Symbol
+    kernel: sp.Expr
+    direct_integration_variable: sp.Symbol
+
+    def __post_init__(self) -> None:
+        _classify_relative_product(self.product)
+        if not isinstance(self.operand, sp.Expr):
+            raise TypeError("operand must be a SymPy expression.")
+        if not isinstance(self.direct_expression, sp.Integral):
+            raise TypeError("direct_expression must be a SymPy Integral.")
+        if not isinstance(self.normalized_expression, sp.Integral):
+            raise TypeError("normalized_expression must be a SymPy Integral.")
+        if not isinstance(self.output_variable, sp.Symbol):
+            raise TypeError("output_variable must be a SymPy Symbol.")
+        if not isinstance(self.input_variable, sp.Symbol):
+            raise TypeError("input_variable must be a SymPy Symbol.")
+        if not isinstance(self.kernel, sp.Expr):
+            raise TypeError("kernel must be a SymPy expression.")
+        if not isinstance(self.direct_integration_variable, sp.Symbol):
+            raise TypeError(
+                "direct_integration_variable must be a SymPy Symbol."
+            )
+        expected = sp.Integral(
+            self.kernel * self.operand,
+            (self.input_variable, 0, sp.oo),
+        )
+        if self.normalized_expression != expected:
+            raise RelativeWienerHopfError(
+                "normalized_expression is inconsistent with its kernel and operand."
+            )
+        if self.direct_integration_variable not in collect_bound_symbols(
+            self.direct_expression
+        ):
+            raise RelativeWienerHopfError(
+                "the direct integration variable must be bound by the direct action."
+            )
+
+
+@dataclass(frozen=True)
+class RelativeProductActionVerification:
+    """Derived evidence that all three canonical product actions agree."""
+
+    identity: RelativeWienerHopfIdentity
+    original: RelativeProductAction
+    left: RelativeProductAction
+    right: RelativeProductAction
+    actions_verified: bool = field(init=False, default=True)
+
+    def __post_init__(self) -> None:
+        if not isinstance(self.identity, RelativeWienerHopfIdentity):
+            raise TypeError("identity must be a RelativeWienerHopfIdentity.")
+        actions = (self.original, self.left, self.right)
+        if not all(isinstance(action, RelativeProductAction) for action in actions):
+            raise TypeError("all verification members must be RelativeProductAction.")
+        if tuple(action.product for action in actions) != (
+            self.identity.original,
+            self.identity.left,
+            self.identity.right,
+        ):
+            raise RelativeWienerHopfError(
+                "verification actions must correspond to the stored identity."
+            )
+        output_variables = {action.output_variable for action in actions}
+        input_variables = {action.input_variable for action in actions}
+        if len(output_variables) != 1 or len(input_variables) != 1:
+            raise RelativeWienerHopfError(
+                "verification actions must use common output and input variables."
+            )
+        if any(
+            sp.simplify(self.original.kernel - action.kernel) != 0
+            for action in (self.left, self.right)
+        ):
+            raise RelativeWienerHopfError(
+                "the canonical relative product kernels are not equal."
+            )
+        model = _validate_relative_product_shape(self.identity.original, "original")
+        expected = model.integral_kernel.xreplace(
+            {
+                model.output_variable: self.original.output_variable,
+                model.input_variable: self.original.input_variable,
+            }
+        )
+        if any(sp.simplify(action.kernel - expected) != 0 for action in actions):
+            raise RelativeWienerHopfError(
+                "a canonical product kernel does not match the conjugated L1 kernel."
+            )
+
+
+@dataclass(frozen=True)
 class RelativeWienerHopfDerivationTrace:
     """E2E trace built solely from one verified L1 factorization."""
 
@@ -750,6 +853,332 @@ def _validate_relative_map(
     _require_equivalent("relative gamma_k", dilation.gamma_k, model.gamma_k)
     _require_equivalent("relative gamma_j", dilation.gamma_j, model.gamma_j)
     _require_equivalent("relative scale", dilation.scale, model.relative_scale)
+
+
+def apply_relative_factor(
+    factor: RelativeOperatorFactor,
+    operand: sp.Expr,
+    *,
+    output_variable: sp.Symbol,
+    integration_variables: Iterable[sp.Symbol] = (),
+) -> sp.Expr:
+    """Apply one typed relative-domain factor to a SymPy operand."""
+
+    if not isinstance(operand, sp.Expr):
+        raise TypeError("operand must be a SymPy expression.")
+    if not isinstance(output_variable, sp.Symbol):
+        raise TypeError("output_variable must be a SymPy Symbol.")
+    variables = _validated_integration_variables(integration_variables)
+    if isinstance(factor, DilationOperatorModel):
+        if variables:
+            raise RelativeWienerHopfError(
+                "a dilation action does not use integration variables."
+            )
+        scale = factor.dilation.scale
+        replacement = (
+            output_variable / scale
+            if factor.inverse
+            else scale * output_variable
+        )
+        return substitute_free_variable(operand, output_variable, replacement)
+    if not isinstance(factor, WienerHopfOperatorModel):
+        raise TypeError("factor must be a typed relative operator factor.")
+    if len(variables) > 1:
+        raise RelativeWienerHopfError(
+            "one Wiener--Hopf factor accepts at most one integration variable."
+        )
+    kernel = _wiener_hopf_kernel(factor)
+    integration_variable = _select_integration_variable(
+        operand,
+        kernel,
+        output_variable,
+        variables[0] if variables else None,
+    )
+    kernel_at_difference = substitute_free_variable(
+        kernel,
+        factor.factorization.time_variable,
+        output_variable - integration_variable,
+    )
+    integrated_operand = substitute_free_variable(
+        operand,
+        output_variable,
+        integration_variable,
+    )
+    return sp.Integral(
+        kernel_at_difference * integrated_operand,
+        (integration_variable, 0, sp.oo),
+    )
+
+
+def apply_ordered_relative_product(
+    product: OrderedRelativeOperatorProduct,
+    operand: sp.Expr,
+    *,
+    output_variable: sp.Symbol,
+    input_variable: sp.Symbol | None = None,
+    integration_variables: Iterable[sp.Symbol] = (),
+) -> RelativeProductAction:
+    """Apply one canonical product right-to-left and normalize its action."""
+
+    if not isinstance(product, OrderedRelativeOperatorProduct):
+        raise TypeError("product must be an OrderedRelativeOperatorProduct.")
+    if not isinstance(operand, sp.Expr):
+        raise TypeError("operand must be a SymPy expression.")
+    if not isinstance(output_variable, sp.Symbol):
+        raise TypeError("output_variable must be a SymPy Symbol.")
+    placement, model = _classify_relative_product(product)
+    source_variable = model.input_variable if input_variable is None else input_variable
+    if not isinstance(source_variable, sp.Symbol):
+        raise TypeError("input_variable must be a SymPy Symbol.")
+    variables = _validated_integration_variables(integration_variables)
+    integral_factor_count = sum(
+        isinstance(factor, WienerHopfOperatorModel) for factor in product.factors
+    )
+    if variables and len(variables) != integral_factor_count:
+        raise RelativeWienerHopfError(
+            "integration_variables must supply one distinct symbol per integral factor."
+        )
+
+    evaluation_variable = _evaluation_variable(
+        operand,
+        source_variable,
+        output_variable,
+    )
+    expression = substitute_free_variable(
+        operand,
+        source_variable,
+        evaluation_variable,
+    )
+    integral_index = integral_factor_count - 1
+    for factor in reversed(product.factors):
+        if isinstance(factor, WienerHopfOperatorModel):
+            selected = (variables[integral_index],) if variables else ()
+            integral_index -= 1
+            expression = apply_relative_factor(
+                factor,
+                expression,
+                output_variable=evaluation_variable,
+                integration_variables=selected,
+            )
+        else:
+            expression = apply_relative_factor(
+                factor,
+                expression,
+                output_variable=evaluation_variable,
+            )
+    direct_expression = substitute_free_variable(
+        expression,
+        evaluation_variable,
+        output_variable,
+    )
+    if not isinstance(direct_expression, sp.Integral):
+        raise RelativeWienerHopfError(
+            "a canonical relative product must produce an integral action."
+        )
+    direct_integration_variable = direct_expression.variables[0]
+    normalized_operand, normalized_input = _normalized_operand(
+        operand,
+        source_variable,
+        output_variable,
+    )
+    kernel = _normalized_relative_kernel(
+        product,
+        placement,
+        output_variable,
+        normalized_input,
+    )
+    normalized_expression = sp.Integral(
+        kernel * normalized_operand,
+        (normalized_input, 0, sp.oo),
+    )
+    return RelativeProductAction(
+        product=product,
+        operand=normalized_operand,
+        direct_expression=direct_expression,
+        normalized_expression=normalized_expression,
+        output_variable=output_variable,
+        input_variable=normalized_input,
+        kernel=kernel,
+        direct_integration_variable=direct_integration_variable,
+    )
+
+
+def verify_relative_product_actions(
+    identity: RelativeWienerHopfIdentity,
+    operand: sp.Expr | None = None,
+    *,
+    output_variable: sp.Symbol | None = None,
+    input_variable: sp.Symbol | None = None,
+) -> RelativeProductActionVerification:
+    """Derive and compare the three canonical actions of one identity."""
+
+    if not isinstance(identity, RelativeWienerHopfIdentity):
+        raise TypeError("identity must be a RelativeWienerHopfIdentity.")
+    model = _validate_relative_product_shape(identity.original, "original")
+    output = model.output_variable if output_variable is None else output_variable
+    input_ = model.input_variable if input_variable is None else input_variable
+    if not isinstance(output, sp.Symbol):
+        raise TypeError("output_variable must be a SymPy Symbol.")
+    if not isinstance(input_, sp.Symbol):
+        raise TypeError("input_variable must be a SymPy Symbol.")
+    applied_operand = sp.Function("f")(input_) if operand is None else operand
+    if not isinstance(applied_operand, sp.Expr):
+        raise TypeError("operand must be a SymPy expression.")
+    actions = tuple(
+        apply_ordered_relative_product(
+            product,
+            applied_operand,
+            output_variable=output,
+            input_variable=input_,
+        )
+        for product in (identity.original, identity.left, identity.right)
+    )
+    return RelativeProductActionVerification(
+        identity=identity,
+        original=actions[0],
+        left=actions[1],
+        right=actions[2],
+    )
+
+
+def _validated_integration_variables(
+    integration_variables: Iterable[sp.Symbol],
+) -> tuple[sp.Symbol, ...]:
+    if integration_variables is None:
+        raise TypeError("integration_variables must be an iterable of Symbols.")
+    try:
+        variables = tuple(integration_variables)
+    except TypeError as exc:
+        raise TypeError(
+            "integration_variables must be an iterable of Symbols."
+        ) from exc
+    if not all(isinstance(variable, sp.Symbol) for variable in variables):
+        raise TypeError("integration_variables must contain only SymPy Symbols.")
+    names = tuple(variable.name for variable in variables)
+    if len(set(names)) != len(names):
+        raise RelativeWienerHopfError(
+            "integration_variables must not repeat symbol names."
+        )
+    return variables
+
+
+def _select_integration_variable(
+    operand: sp.Expr,
+    kernel: sp.Expr,
+    output_variable: sp.Symbol,
+    proposed: sp.Symbol | None,
+) -> sp.Symbol:
+    avoid = (
+        operand.atoms(sp.Symbol)
+        | kernel.atoms(sp.Symbol)
+        | collect_bound_symbols(operand)
+        | {output_variable}
+    )
+    if proposed is not None and proposed.name not in {
+        symbol.name for symbol in avoid
+    }:
+        return proposed
+    if proposed is not None:
+        avoid.add(proposed)
+    return fresh_symbol(avoid, preferred_names=("y", "u", "v", "w", "z"))
+
+
+def _evaluation_variable(
+    operand: sp.Expr,
+    input_variable: sp.Symbol,
+    output_variable: sp.Symbol,
+) -> sp.Symbol:
+    operand_symbols = operand.atoms(sp.Symbol) | collect_bound_symbols(operand)
+    if output_variable != input_variable and output_variable not in operand_symbols:
+        return output_variable
+    avoid = operand_symbols | {input_variable, output_variable}
+    return fresh_symbol(avoid, preferred_names=("q", "r", "s", "w", "v"))
+
+
+def _normalized_operand(
+    operand: sp.Expr,
+    input_variable: sp.Symbol,
+    output_variable: sp.Symbol,
+) -> tuple[sp.Expr, sp.Symbol]:
+    bound = collect_bound_symbols(operand)
+    if input_variable != output_variable and input_variable not in bound:
+        return operand, input_variable
+    avoid = operand.atoms(sp.Symbol) | bound | {input_variable, output_variable}
+    normalized_input = fresh_symbol(
+        avoid,
+        preferred_names=("y", "u", "v", "w", "z"),
+    )
+    return (
+        substitute_free_variable(operand, input_variable, normalized_input),
+        normalized_input,
+    )
+
+
+def _classify_relative_product(
+    product: OrderedRelativeOperatorProduct,
+) -> tuple[
+    Literal["original", "left", "right"],
+    DilationConjugatedWienerHopfFactorization,
+]:
+    if not isinstance(product, OrderedRelativeOperatorProduct):
+        raise TypeError("product must be an OrderedRelativeOperatorProduct.")
+    if len(product.factors) == 3:
+        placement: Literal["original", "left", "right"] = "original"
+    elif isinstance(product.factors[0], DilationOperatorModel):
+        placement = "left"
+    else:
+        placement = "right"
+    return placement, _validate_relative_product_shape(product, placement)
+
+
+def _wiener_hopf_kernel(factor: WienerHopfOperatorModel) -> sp.Expr:
+    model = factor.factorization
+    kernel = {
+        "original": model.original_kernel,
+        "left": model.left_convolution_kernel,
+        "right": model.right_convolution_kernel,
+    }.get(factor.placement)
+    if not isinstance(kernel, sp.Expr):
+        raise RelativeWienerHopfError(
+            "the Wiener--Hopf factor has no supported convolution kernel."
+        )
+    return kernel
+
+
+def _normalized_relative_kernel(
+    product: OrderedRelativeOperatorProduct,
+    placement: Literal["original", "left", "right"],
+    output_variable: sp.Symbol,
+    input_variable: sp.Symbol,
+) -> sp.Expr:
+    if placement == "original":
+        left_dilation, wh_factor, right_dilation = product.factors
+        kernel = _wiener_hopf_kernel(wh_factor)
+        gamma_k = left_dilation.dilation.scale
+        gamma_j = right_dilation.dilation.scale
+        argument = gamma_k * output_variable - gamma_j * input_variable
+        jacobian = gamma_j
+    elif placement == "left":
+        relative_dilation, wh_factor = product.factors
+        kernel = _wiener_hopf_kernel(wh_factor)
+        argument = (
+            relative_dilation.dilation.scale * output_variable - input_variable
+        )
+        jacobian = sp.Integer(1)
+    else:
+        wh_factor, relative_dilation = product.factors
+        kernel = _wiener_hopf_kernel(wh_factor)
+        relative_scale = relative_dilation.dilation.scale
+        argument = output_variable - input_variable / relative_scale
+        jacobian = 1 / relative_scale
+    return sp.simplify(
+        jacobian
+        * substitute_free_variable(
+            kernel,
+            wh_factor.factorization.time_variable,
+            argument,
+        )
+    )
 
 
 def build_relative_wiener_hopf_trace(

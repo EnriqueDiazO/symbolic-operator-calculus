@@ -295,6 +295,40 @@ hayan sido aplicados independientemente a una funcion. Esa semantica ejecutable
 y la verificacion algebraica independiente de correspondencias quedan fuera de
 A3.1 y corresponden a A3.2/A3.3.
 
+## Semántica ejecutable de productos Wiener–Hopf relativos
+
+Las dilataciones relativas no llevan peso. Para una expresion \(q\), sus
+acciones directa, inversa y relativa son, respectivamente,
+
+\[
+(V_{\alpha_k}q)(x)=q(\gamma_kx),\qquad
+(V_{\alpha_j}^{-1}q)(x)=q(x/\gamma_j),\qquad
+(V_{\beta_{k,j}}q)(x)=q((\gamma_k/\gamma_j)x).
+\]
+
+Un factor Wiener–Hopf usa el kernel de convolucion asociado a su placement:
+
+\[
+(W(h)q)(x)=\int_0^\infty h(x-y)q(y)\,dy.
+\]
+
+Los productos se aplican factor por factor desde la derecha. Cada una de las
+tres formas canonicas conserva una accion directa propia. La normalizacion
+realiza el cambio de variable acotado que corresponde a esa forma y obtiene en
+los tres casos
+
+\[
+K_{k,j}^{\mathrm{rel}}(x,y)
+=\gamma_jh_{k,j}(\gamma_kx-\gamma_jy).
+\]
+
+En el producto original, el factor \(\gamma_j\) surge del cambio de variable
+inducido por \(V_{\alpha_j}^{-1}\); no forma parte de la accion atomica de una
+dilatacion. La igualdad de los tres kernels se comprueba algebraicamente y se
+registra como evidencia ejecutable derivada. Esta evidencia es distinta de
+`RelativeWienerHopfIdentity.exact`, que continua significando coherencia
+estructural y no depende de las variables elegidas para aplicar los productos.
+
 ## Intervalos de integracion
 
 Salvo que se indique lo contrario, los operadores integrales del MVP integran
