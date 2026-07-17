@@ -4,6 +4,7 @@ import sympy as sp
 from symbolic_operator_calculus import (
     G1,
     G2,
+    I,
     R11,
     Vtilde_alpha1,
     Vtilde_alpha2,
@@ -226,6 +227,43 @@ def test_apply_product_empty_product_returns_operand_unchanged():
     result = apply_product(Product(()), operand, x, mvp_atomic_rules())
 
     assert result is operand
+
+
+def test_structural_and_explicit_identity_products_have_equivalent_actions():
+    x, _, f, _ = symbols_and_functions()
+    operand = f(x)
+    rules = mvp_atomic_rules()
+
+    structural_result = apply_product(Product(()), operand, x, rules)
+    explicit_result = apply_product(Product((I,)), operand, x, rules)
+
+    assert structural_result is operand
+    assert explicit_result is operand
+
+
+def test_structural_and_explicit_identity_terms_have_equivalent_actions():
+    x, _, f, _ = symbols_and_functions()
+    operand = f(x)
+    rules = mvp_atomic_rules()
+    structural_term = Term(1, Product(()))
+    explicit_term = Term(1, I)
+
+    structural_result = apply_linear_combination(
+        LinearCombination((structural_term,)),
+        operand,
+        x,
+        rules,
+    )
+    explicit_result = apply_linear_combination(
+        LinearCombination((explicit_term,)),
+        operand,
+        x,
+        rules,
+    )
+
+    assert structural_term != explicit_term
+    assert explicit_term.product == Product((I,))
+    assert structural_result == explicit_result == operand
 
 
 def test_apply_product_rejects_non_product_input():

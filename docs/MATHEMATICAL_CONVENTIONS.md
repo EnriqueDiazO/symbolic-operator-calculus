@@ -129,6 +129,28 @@ El orden anterior debe preservarse en la representacion estructural del motor.
 No debe inferirse del orden canonico que una biblioteca simbolica pueda elegir
 para imprimir o almacenar sumas.
 
+## Identidad y cero estructurales
+
+`Product(())` es la identidad estructural de composicion: representa la palabra
+vacia del monoide de operadores. `LinearCombination(())` es el cero aditivo
+estructural. Por ejemplo, para un operando valido \(f\),
+
+\[
+\operatorname{Product}(())f=f,
+\qquad
+\operatorname{LinearCombination}(())f=0.
+\]
+
+El objeto publico `I` es, en cambio, un atomo explicito de identidad usado en
+formulas. Por ello, `Product(())` y `Product((I,))` son estructuralmente
+distintos, aunque sus acciones sean equivalentes. Del mismo modo,
+`Term(1, Product(()))` y `Term(1, I)` conservan estructuras distintas y la
+segunda forma se normaliza a `Term(1, Product((I,)))`.
+
+La igualdad del AST es igualdad estructural, no equivalencia algebraica
+general. En particular, no se eliminan automaticamente factores `I` de
+`Product((I, A))`, `Product((A, I))` ni `Product((I, I))`.
+
 ## No conmutatividad
 
 Todos los operadores del MVP son no conmutativos. En general,

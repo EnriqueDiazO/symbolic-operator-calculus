@@ -18,6 +18,7 @@ from symbolic_operator_calculus import (
     Wplus_12,
     FirstSchurCorrectionSignTrace,
     LatexRenderingError,
+    LinearCombination,
     Product,
     RenderedDerivationStep,
     RenderedFirstSchurDerivation,
@@ -121,6 +122,41 @@ def test_renderer_accepts_only_trace_and_preserves_stable_step_order(formal_trac
 )
 def test_operator_atoms_use_central_explicit_notation(atom, expected):
     assert render_operator_atom_latex(atom) == expected
+
+
+def test_empty_product_uses_the_explicit_identity_notation():
+    rendered = render_product_latex(Product(()))
+
+    assert rendered == render_operator_atom_latex(I)
+    assert rendered.strip()
+
+
+def test_empty_linear_combination_renders_as_zero():
+    assert render_linear_combination_latex(LinearCombination(())) == "0"
+
+
+@pytest.mark.parametrize(
+    ("coefficient", "expected"),
+    (
+        (1, r"I"),
+        (-1, r"- I"),
+        (2, r"2\,I"),
+        (Fraction(1, 2), r"\frac{1}{2}\,I"),
+        (0, r"0"),
+    ),
+)
+def test_structural_identity_terms_have_unambiguous_latex(coefficient, expected):
+    assert render_term_latex(Term(coefficient, Product(()))) == expected
+
+
+def test_renderer_does_not_remove_explicit_identity_factors():
+    assert render_product_latex(Product((I, Vtilde_alpha1))) == (
+        r"I\,\widetilde V_{\alpha_1}"
+    )
+    assert render_product_latex(Product((Vtilde_alpha1, I))) == (
+        r"\widetilde V_{\alpha_1}\,I"
+    )
+    assert render_product_latex(Product((I, I))) == r"I\,I"
 
 
 def test_product_and_linear_combination_preserve_ast_order_and_exact_halves():

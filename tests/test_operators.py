@@ -352,6 +352,37 @@ def test_empty_product_represents_empty_composition():
     assert {result: "empty product"}[Product(())] == "empty product"
 
 
+def test_structural_and_explicit_identity_products_remain_distinct():
+    structural_identity = Product(())
+    explicit_identity = Product((I,))
+
+    assert structural_identity != explicit_identity
+    assert hash(structural_identity) == hash(Product(()))
+    assert hash(explicit_identity) == hash(Product((I,)))
+    assert {
+        structural_identity: "structural",
+        explicit_identity: "explicit",
+    } == {
+        Product(()): "structural",
+        Product((I,)): "explicit",
+    }
+
+
+def test_explicit_identity_factors_are_not_simplified_or_reordered():
+    A, _, _, _ = atoms()
+
+    left_identity = Product((I, A))
+    right_identity = Product((A, I))
+    double_identity = Product((I, I))
+
+    assert left_identity.factors == (I, A)
+    assert right_identity.factors == (A, I)
+    assert double_identity.factors == (I, I)
+    assert left_identity != Product((A,))
+    assert right_identity != Product((A,))
+    assert double_identity != Product((I,))
+
+
 def test_zero_times_atom_is_empty_linear_combination():
     A, _, _, _ = atoms()
 

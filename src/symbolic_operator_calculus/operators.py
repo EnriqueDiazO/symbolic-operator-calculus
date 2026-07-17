@@ -141,9 +141,10 @@ class OperatorAtom:
 class Product:
     """An ordered product of operator atoms.
 
-    ``Product(())`` is preserved as a structural empty composition. It is used
-    as an identity-like accumulator during ordered expansion and product
-    application. Non-empty products may contain only ``OperatorAtom`` factors.
+    ``Product(())`` is the structural composition identity (the empty word).
+    It remains structurally distinct from the explicit identity atom product
+    ``Product((I,))``, although both have the same action. Non-empty products
+    may contain only ``OperatorAtom`` factors.
     """
 
     factors: tuple[OperatorAtom, ...]
@@ -232,7 +233,10 @@ class Term:
 
 @dataclass(frozen=True)
 class LinearCombination:
-    """An ordered finite linear combination of scalar-weighted products."""
+    """An ordered finite linear combination of scalar-weighted products.
+
+    ``LinearCombination(())`` is the structural additive zero.
+    """
 
     terms: tuple[Term, ...]
 

@@ -11,7 +11,16 @@ from sympy.printing.latex import LatexPrinter
 from .actions import AppliedLinearCombination, PrincipalValue
 from .derivations import FirstSchurDerivationTrace
 from .kernels import KernelCombination
-from .operators import G1, G2, LinearCombination, OperatorAtom, Product, Scalar, Term
+from .operators import (
+    G1,
+    G2,
+    I,
+    LinearCombination,
+    OperatorAtom,
+    Product,
+    Scalar,
+    Term,
+)
 from .relations import ExactBlock, FirstSchurReduction
 from .relative_wiener_hopf import RelativeWienerHopfDerivationTrace
 
@@ -202,6 +211,8 @@ def render_product_latex(product: Product) -> str:
 
     if not isinstance(product, Product):
         raise TypeError("product must be a Product.")
+    if not product.factors:
+        return render_operator_atom_latex(I)
     return r"\,".join(
         _render_operator_product_factor_latex(atom) for atom in product.factors
     )
@@ -213,6 +224,8 @@ def render_term_latex(term: Term, *, include_sign: bool = True) -> str:
     if not isinstance(term, Term):
         raise TypeError("term must be a Term.")
     sign, magnitude = _coefficient_sign_and_magnitude(term.coefficient)
+    if magnitude == 0:
+        return "0"
     body = render_product_latex(term.product)
     coefficient = _coefficient_magnitude_latex(magnitude)
     rendered = body if coefficient == "1" else rf"{coefficient}\,{body}"
