@@ -24,8 +24,10 @@ modulo-compact semantics.
 
 build_relative_wiener_hopf_trace retains the complete L1 result and places its
 same symbol and kernel objects into the operator and action models. It validates
-both kernel reconstructions and both symbol correspondences. The common action
-is one half-line integral using the stored conjugated kernel.
+both kernel reconstructions and the structural coherence and L1 provenance of
+the stored symbol-correspondence fields. Those fields remain aliases of the L1
+right and left symbols; they are not an independent algebraic verification.
+The common action is one half-line integral using the stored conjugated kernel.
 
 render_relative_wiener_hopf_trace_latex accepts only the completed trace and
 returns ten ordered steps. It calculates no symbols or kernels.

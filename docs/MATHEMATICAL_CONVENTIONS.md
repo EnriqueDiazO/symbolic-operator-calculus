@@ -266,6 +266,35 @@ Una equivalencia modulo compactos no puede ser usada automaticamente como una
 identidad exacta. Cualquier transformacion que dependa de \(\simeq\) debe estar
 marcada estructuralmente como tal.
 
+## Invariantes de operadores Wiener–Hopf relativos
+
+El dominio Wiener–Hopf relativo usa indices enteros estrictamente positivos y
+solo representa pares off-diagonal, de modo que \(k\ne j\). Sus escalas son
+expresiones SymPy declaradas reales, positivas y finitas. La dilatacion relativa
+
+\[
+\beta_{k,j}(x)=\frac{\gamma_k}{\gamma_j}x
+\]
+
+almacena las dos escalas de procedencia y valida algebraicamente ese cociente.
+
+Para una misma factorizacion L1 se admiten tres productos canonicos ordenados:
+
+\[
+V_{\alpha_k}W(b_{k,j})V_{\alpha_j}^{-1},\qquad
+V_{\beta_{k,j}}W(b_{k,j}^{\mathrm L}),\qquad
+W(b_{k,j}^{\mathrm R})V_{\beta_{k,j}}.
+\]
+
+El orden de estos factores, su par \((k,j)\), sus escalas y la procedencia de
+los tres simbolos forman parte de la estructura validada. En
+`RelativeWienerHopfIdentity`, `exact` es una propiedad derivada y de solo
+lectura: indica que las tres formas canonicas pertenecen al mismo modelo L1 y
+que sus metadatos son internamente coherentes. No afirma que los tres productos
+hayan sido aplicados independientemente a una funcion. Esa semantica ejecutable
+y la verificacion algebraica independiente de correspondencias quedan fuera de
+A3.1 y corresponden a A3.2/A3.3.
+
 ## Intervalos de integracion
 
 Salvo que se indique lo contrario, los operadores integrales del MVP integran
