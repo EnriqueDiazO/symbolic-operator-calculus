@@ -5,6 +5,8 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import final
 
+import sympy as sp
+
 from ..domains import (
     AssumptionContext,
     ComplexDomain,
@@ -154,15 +156,16 @@ class MellinSymbolDomain:
             raise MellinDomainError(
                 "each symbolic variable may occupy only one domain slot."
             )
+        declared_symbols = {item.symbol for item in declared}
         if any(
-            item.variable != self.frequency.symbol
+            item.variable not in declared_symbols
             for item in self.singular_set.singularities
         ) or any(
-            item.variable != self.frequency.symbol
+            item.variable not in declared_symbols
             for item in self.singular_set.avoidances
         ):
             raise MellinFrequencyMismatchError(
-                "all Mellin-domain singular metadata must use the declared frequency."
+                "Mellin-domain singular metadata must use a declared typed variable."
             )
 
         context = self.assumption_context.combine(
@@ -330,6 +333,103 @@ class MellinSymbolDomain:
         ):
             return MembershipStatus.UNDETERMINED
         return MembershipStatus.YES
+
+    def substitute(
+        self,
+        substitutions: dict[sp.Basic, sp.Basic],
+    ) -> MellinSymbolDomain:
+        """Apply role-preserving scalar substitutions to every metadata layer."""
+
+        if not isinstance(substitutions, dict):
+            raise TypeError("substitutions must be a dict.")
+        normalized = {
+            sp.sympify(source): sp.sympify(target)
+            for source, target in substitutions.items()
+        }
+        declared_by_symbol = {
+            variable.symbol: variable for variable in self.declared_variables
+        }
+        for source, target in normalized.items():
+            if source not in declared_by_symbol:
+                continue
+            source_role = declared_by_symbol[source].role
+            for target_symbol in target.free_symbols:
+                target_declaration = declared_by_symbol.get(target_symbol)
+                if (
+                    target_declaration is not None
+                    and target_declaration.role is not source_role
+                ):
+                    raise MellinDomainRoleError(
+                        "substitution cannot change a declared variable role."
+                    )
+                if target_declaration is None and target_symbol != source:
+                    if isinstance(target, sp.Symbol):
+                        continue
+                    raise MellinDomainRoleError(
+                        "substitution cannot introduce an undeclared free symbol."
+                    )
+
+        substituted_complex_domain = self.complex_domain.substitute(normalized)
+        substituted_singular_set = self.singular_set.substitute(normalized)
+
+        def substitute_declaration(
+            declaration: MellinVariable,
+        ) -> MellinVariable | None:
+            target = normalized.get(declaration.symbol, declaration.symbol)
+            if not isinstance(target, sp.Symbol):
+                if target.free_symbols:
+                    existing = tuple(
+                        variable
+                        for variable in self.declared_variables
+                        if variable.symbol in target.free_symbols
+                        and variable.role is declaration.role
+                    )
+                    if len(existing) == 1 and len(target.free_symbols) == 1:
+                        return existing[0]
+                    raise MellinDomainRoleError(
+                        "a non-symbol replacement cannot define a new variable role."
+                    )
+                return None
+            return MellinVariable(
+                symbol=target,
+                role=declaration.role,
+                assumption_context=declaration.assumption_context.substitute(
+                    normalized
+                ),
+                description=declaration.description,
+            )
+
+        frequency = substitute_declaration(self.frequency)
+        if frequency is None:
+            raise MellinFrequencyMismatchError(
+                "the Mellin frequency can only be renamed to another Symbol."
+            )
+        spatial = tuple(
+            replacement
+            for item in self.spatial_variables
+            if (replacement := substitute_declaration(item)) is not None
+        )
+        relative = (
+            None
+            if self.relative_variable is None
+            else substitute_declaration(self.relative_variable)
+        )
+        parameters = tuple(
+            replacement
+            for item in self.parameters
+            if (replacement := substitute_declaration(item)) is not None
+        )
+        return MellinSymbolDomain(
+            frequency=frequency,
+            complex_domain=substituted_complex_domain,
+            spatial_variables=spatial,
+            relative_variable=relative,
+            parameters=parameters,
+            assumption_context=self.assumption_context.substitute(normalized),
+            singular_set=substituted_singular_set,
+            description=self.description,
+            evidence=self.evidence,
+        )
 
     def __str__(self) -> str:
         return (

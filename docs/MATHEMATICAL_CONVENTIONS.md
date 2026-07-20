@@ -508,3 +508,15 @@ promueve automaticamente a verificacion interna.
 
 La infraestructura P0-B es una barrera semantica preparatoria para Mellin, no
 una implementacion del calculo de Mellin.
+
+## Símbolos escalares de Mellin
+
+P1-A declara los papeles de variables de Mellin de forma explícita. Los
+nombres `x`, `lambda` o cualquier otro no determinan si un símbolo es espacial,
+frecuencial, relativo o paramétrico. `MellinExpression` conserva los objetos
+P0-B y `MellinSymbol` clasifica solamente dependencias escalares.
+
+Un `MellinSymbol` no es un operador y no afirma transformabilidad, acotación,
+pertenencia a una clase funcional, compacidad, Fredholmness o invertibilidad.
+Las potencias de base paramétrica sensibles a ramas, como
+`gamma**(I*lambda)`, exigen la hipótesis explícita `gamma > 0`.

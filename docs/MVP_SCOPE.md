@@ -282,3 +282,11 @@ total y espacios (L^p\) ponderados; shifts normalizados (U_\gamma\); matrices
 generales y determinantes operatoriales; Fredholmness e indices; pruebas de
 compacidad; regularizadores analiticos; calculo de fibras frontera; y
 resolucion general de desigualdades.
+
+## Barrera escalar P1-A
+
+P1-A añade variables, dominios, expresiones y símbolos escalares tipados para
+notación de Mellin. Incluye ejemplos formales y relaciones escalares
+condicionadas, pero no una transformada, una integral, un operador, un PDO, una
+clase funcional ni resultados de Fredholm o compacidad. Los metadatos P0-B no
+se proyectan ni se amplían implícitamente durante las operaciones soportadas.
