@@ -330,7 +330,7 @@ def test_exact_is_derived_and_cannot_be_supplied_by_callers():
     signature = inspect.signature(RelativeWienerHopfIdentity)
 
     assert "exact" not in signature.parameters
-    assert trace.identity.exact is True
+    assert len(trace.identity.exact_relations) == 2
     with pytest.raises(TypeError):
         RelativeWienerHopfIdentity(
             trace.original_operator,

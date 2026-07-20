@@ -18,10 +18,10 @@ from symbolic_operator_calculus import (
     SchurFactorizationError,
     Term,
     a22_first_schur_correction,
-    apply_combined_kernel_c22,
+    apply_combined_kernel_c22 as _apply_combined_kernel_c22,
     apply_linear_combination_ordered,
-    c22_integrand,
-    combined_kernel_c22,
+    c22_integrand as _c22_integrand,
+    combined_kernel_c22 as _combined_kernel_c22,
     explicit_wiener_hopf_rules,
     extract_applied_kernels,
     factor_first_schur_correction,
@@ -29,9 +29,24 @@ from symbolic_operator_calculus import (
     kplus_kernel,
     m12_kernel,
     m21_kernel,
-    mvp_atomic_rules,
     positive_decay_symbol,
 )
+from semantic_helpers import explicit_r11_kernel_representation, regularizer_rules
+
+
+def c22_integrand(*args, **kwargs):
+    kwargs["regularizer_kernel"] = explicit_r11_kernel_representation()
+    return _c22_integrand(*args, **kwargs).expression
+
+
+def combined_kernel_c22(*args, **kwargs):
+    kwargs["regularizer_kernel"] = explicit_r11_kernel_representation()
+    return _combined_kernel_c22(*args, **kwargs).expression
+
+
+def apply_combined_kernel_c22(*args, **kwargs):
+    kwargs["regularizer_kernel"] = explicit_r11_kernel_representation()
+    return _apply_combined_kernel_c22(*args, **kwargs).expression
 
 
 LEFT_FACTORS = (
@@ -293,7 +308,7 @@ def test_end_to_end_factorized_c22_expands_to_four_extracted_kernels():
         correction,
         f(x),
         x,
-        mvp_atomic_rules(),
+        regularizer_rules(),
     )
     extracted = extract_applied_kernels(applied, x, f, y)
     expanded = sp.Add.make_args(sp.expand(c22_integrand(x, u, v, y)))

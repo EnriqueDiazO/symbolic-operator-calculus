@@ -10,6 +10,7 @@ from symbolic_operator_calculus import (
     CompactSchurActionError,
     FirstSchurCompactModelAction,
     FirstSchurReduction,
+    KernelAnnotatedExpression,
     LinearCombination,
     OperatorAtom,
     PrincipalValue,
@@ -17,8 +18,8 @@ from symbolic_operator_calculus import (
     a22_exact_operator,
     a22_first_schur_model,
     a22_first_schur_mod_compact_relation,
-    apply_a22_first_schur_model_compact,
-    apply_combined_kernel_c22,
+    apply_a22_first_schur_model_compact as _apply_a22_first_schur_model_compact,
+    apply_combined_kernel_c22 as _apply_combined_kernel_c22,
     apply_linear_combination_ordered,
     collect_bound_symbols,
     explicit_wiener_hopf_rules,
@@ -26,9 +27,20 @@ from symbolic_operator_calculus import (
     mvp_atomic_rules,
     positive_decay_symbol,
 )
+from semantic_helpers import explicit_r11_kernel_representation, regularizer_rules
 
 
 HALF = Fraction(1, 2)
+
+
+def apply_a22_first_schur_model_compact(*args, **kwargs):
+    kwargs["regularizer_kernel"] = explicit_r11_kernel_representation()
+    return _apply_a22_first_schur_model_compact(*args, **kwargs)
+
+
+def apply_combined_kernel_c22(*args, **kwargs):
+    kwargs["regularizer_kernel"] = explicit_r11_kernel_representation()
+    return _apply_combined_kernel_c22(*args, **kwargs)
 
 
 def nested_integrand(kernel):
@@ -41,7 +53,7 @@ def nested_integrand(kernel):
 def compact_kernel_integrand(action, input_function):
     input_variable = action.correction.variables[0]
     input_atom = input_function(input_variable)
-    factors = sp.Mul.make_args(action.correction.function)
+    factors = sp.Mul.make_args(action.correction.expression.function)
     c22 = next(factor for factor in factors if factor != input_atom)
     outer_factors = sp.Mul.make_args(c22.function)
     inner = next(factor for factor in outer_factors if isinstance(factor, sp.Integral))
@@ -133,7 +145,8 @@ def test_formal_compact_action_preserves_order_principal_value_and_formal_kernel
         -HALF,
     )
     assert action.diagonal.as_expr().has(PrincipalValue)
-    assert isinstance(action.correction, sp.Integral)
+    assert isinstance(action.correction, KernelAnnotatedExpression)
+    assert isinstance(action.correction.expression, sp.Integral)
     assert action.correction.has(
         sp.Function("Lplus_12"),
         sp.Function("Lminus_21"),
@@ -144,7 +157,10 @@ def test_formal_compact_action_preserves_order_principal_value_and_formal_kernel
 def test_explicit_compact_action_changes_only_wiener_hopf_kernel_realization():
     x = sp.Symbol("x")
     f = sp.Function("f")
-    rules = explicit_wiener_hopf_rules(decay=positive_decay_symbol())
+    rules = explicit_wiener_hopf_rules(
+        decay=positive_decay_symbol(),
+        regularizer_kernel=explicit_r11_kernel_representation(),
+    )
     formal = apply_a22_first_schur_model_compact(f(x), x)
     explicit = apply_a22_first_schur_model_compact(f(x), x, rules=rules)
 
@@ -195,7 +211,7 @@ def test_explicit_internal_variables_are_respected_and_collisions_fail():
     )
 
     assert action.correction.variables == [y]
-    assert collect_bound_symbols(action.correction) == {y, u, v}
+    assert collect_bound_symbols(action.correction.expression) == {y, u, v}
     with pytest.raises(CompactSchurActionError):
         apply_a22_first_schur_model_compact(f(x), x, input_variable=x)
     with pytest.raises(ValueError):
@@ -230,9 +246,9 @@ def test_sympy_projection_is_local_sum_without_losing_separated_structure():
     x = sp.Symbol("x")
     action = apply_a22_first_schur_model_compact(sp.Function("f")(x), x)
 
-    assert action.as_expr() == action.diagonal.as_expr() + action.correction
+    assert action.as_expr() == action.diagonal.as_expr() + action.correction.expression
     assert len(action.diagonal.terms) == 4
-    assert isinstance(action.correction, sp.Integral)
+    assert isinstance(action.correction, KernelAnnotatedExpression)
     assert not isinstance(action.as_expr(), LinearCombination)
 
 
@@ -241,9 +257,12 @@ def test_compact_correction_matches_four_expanded_model_kernels_end_to_end(expli
     x, y, u, v = sp.symbols("x y u v")
     f = sp.Function("f")
     rules = (
-        explicit_wiener_hopf_rules(decay=positive_decay_symbol())
+        explicit_wiener_hopf_rules(
+            decay=positive_decay_symbol(),
+            regularizer_kernel=explicit_r11_kernel_representation(),
+        )
         if explicit
-        else mvp_atomic_rules()
+        else regularizer_rules()
     )
     compact = apply_a22_first_schur_model_compact(
         f(x),

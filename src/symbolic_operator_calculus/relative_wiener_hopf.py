@@ -14,6 +14,7 @@ from .substitution import (
     fresh_symbol,
     substitute_free_variable,
 )
+from .semantics import ExactIdentity
 
 
 class RelativeWienerHopfError(ValueError):
@@ -509,7 +510,7 @@ class RelativeWienerHopfIdentity:
     original: OrderedRelativeOperatorProduct
     left: OrderedRelativeOperatorProduct
     right: OrderedRelativeOperatorProduct
-    exact: bool = field(init=False, default=True)
+    exact_relations: tuple[ExactIdentity, ExactIdentity] = field(init=False)
 
     def __post_init__(self) -> None:
         original_model = _validate_relative_product_shape(self.original, "original")
@@ -519,6 +520,18 @@ class RelativeWienerHopfIdentity:
             raise RelativeWienerHopfError(
                 "all identity products must come from the same L1 factorization."
             )
+        evidence = (
+            "validated canonical product shape and common L1 factorization",
+            original_model,
+        )
+        object.__setattr__(
+            self,
+            "exact_relations",
+            (
+                ExactIdentity(self.original, self.left, evidence),
+                ExactIdentity(self.original, self.right, evidence),
+            ),
+        )
 
 
 def _validate_relative_product_shape(

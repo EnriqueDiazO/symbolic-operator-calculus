@@ -2,6 +2,7 @@ import json
 from pathlib import Path
 
 import sympy as sp
+from semantic_helpers import explicit_r11_kernel_representation, regularizer_rules
 
 from symbolic_operator_calculus import (
     a22_first_schur_correction,
@@ -9,7 +10,6 @@ from symbolic_operator_calculus import (
     apply_linear_combination_ordered,
     build_first_schur_derivation_trace,
     combined_kernel_c22,
-    mvp_atomic_rules,
     render_combined_kernel_action_latex,
     render_first_schur_derivation_latex,
     render_scalar_latex,
@@ -35,7 +35,7 @@ INTERNAL_PRESENTATION_NAMES = (
 def _objects():
     x, y, u, v = sp.symbols("x y u v")
     f = sp.Function("f")
-    rules = mvp_atomic_rules()
+    rules = regularizer_rules()
     trace = build_first_schur_derivation_trace(
         f(x),
         x,
@@ -43,6 +43,7 @@ def _objects():
         outer_variable=u,
         middle_variable=v,
         rules=rules,
+        regularizer_kernel=explicit_r11_kernel_representation(),
     )
     rendered = render_first_schur_derivation_latex(trace)
     return x, y, u, v, f, rules, trace, rendered
@@ -95,6 +96,7 @@ def test_combined_kernel_and_action_come_from_public_apis_and_render_semanticall
         outer_variable=u,
         middle_variable=v,
         rules=rules,
+        regularizer_kernel=explicit_r11_kernel_representation(),
     )
     action = apply_combined_kernel_c22(
         x,
@@ -103,6 +105,7 @@ def test_combined_kernel_and_action_come_from_public_apis_and_render_semanticall
         outer_variable=u,
         middle_variable=v,
         rules=rules,
+        regularizer_kernel=explicit_r11_kernel_representation(),
     )
     combined_step = next(
         step.latex for step in rendered.steps if step.key == "combined_kernel"

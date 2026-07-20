@@ -160,7 +160,7 @@ def test_identity_input_and_action_evidence_remain_separate(traces):
         symbol_evidence = rwh.verify_relative_symbol_correspondences(trace.identity)
         action_evidence = rwh.verify_relative_product_actions(trace.identity)
 
-        assert trace.identity.exact is True
+        assert len(trace.identity.exact_relations) == 2
         assert action_evidence.actions_verified is True
         assert symbol_evidence.correspondences_verified is True
 

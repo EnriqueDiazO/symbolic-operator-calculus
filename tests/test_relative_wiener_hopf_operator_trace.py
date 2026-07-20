@@ -21,11 +21,11 @@ def trace():
 
 def test_identity_is_immutable_typed_and_exact(trace):
     assert isinstance(trace, RelativeWienerHopfDerivationTrace)
-    assert trace.identity.exact
+    assert len(trace.identity.exact_relations) == 2
     assert isinstance(trace.original_operator, OrderedRelativeOperatorProduct)
     assert not isinstance(trace.original_operator, sp.Mul)
     with pytest.raises(FrozenInstanceError):
-        trace.identity.exact = False
+        trace.identity.exact_relations = ()
 
 
 def test_products_preserve_noncommutative_factor_order(trace):

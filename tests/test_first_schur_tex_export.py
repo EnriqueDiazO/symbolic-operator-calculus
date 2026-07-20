@@ -3,6 +3,7 @@ from pathlib import Path
 
 import pytest
 import sympy as sp
+from semantic_helpers import explicit_r11_kernel_representation
 
 from symbolic_operator_calculus import (
     build_first_schur_derivation_trace,
@@ -20,6 +21,7 @@ def rendered_derivation():
         input_variable=y,
         outer_variable=u,
         middle_variable=v,
+        regularizer_kernel=explicit_r11_kernel_representation(),
     )
     return render_first_schur_derivation_latex(trace)
 

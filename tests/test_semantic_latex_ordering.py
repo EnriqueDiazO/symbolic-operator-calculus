@@ -2,6 +2,7 @@ import ast
 from pathlib import Path
 
 import sympy as sp
+from semantic_helpers import explicit_r11_kernel_representation
 
 from symbolic_operator_calculus import (
     G1,
@@ -34,6 +35,7 @@ def _trace(*, explicit=False):
         outer_variable=u,
         middle_variable=v,
         rules=rules,
+        regularizer_kernel=explicit_r11_kernel_representation(),
     )
 
 

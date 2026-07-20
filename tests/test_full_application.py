@@ -10,12 +10,13 @@ from symbolic_operator_calculus import (
     Wplus_12,
     AppliedLinearCombination,
     AppliedTerm,
+    KernelAnnotatedExpression,
     apply_linear_combination,
     apply_linear_combination_ordered,
     expand_ordered,
     main_expression,
-    mvp_atomic_rules,
 )
+from semantic_helpers import regularizer_rules
 
 
 REQUIRED_FACTORS = (
@@ -42,7 +43,7 @@ def applied_main_expression():
         expanded_main_expression(),
         f(x),
         x,
-        mvp_atomic_rules(),
+        regularizer_rules(),
     )
 
 
@@ -88,7 +89,7 @@ def expected_applied_expressions():
 
 
 def expressions(applied):
-    return tuple(term.expression for term in applied.result_terms)
+    return tuple(term.expression.expression for term in applied.result_terms)
 
 
 def coefficients(applied):
@@ -96,6 +97,8 @@ def coefficients(applied):
 
 
 def has_external_factor(expression, factor):
+    if isinstance(expression, KernelAnnotatedExpression):
+        expression = expression.expression
     return expression == factor or (expression.is_Mul and factor in expression.args)
 
 
@@ -123,7 +126,10 @@ def test_h4_application_produces_four_scalar_results():
     assert isinstance(applied, AppliedLinearCombination)
     assert len(applied.result_terms) == 4
     assert all(isinstance(term, AppliedTerm) for term in applied.result_terms)
-    assert all(isinstance(term.expression, sp.Expr) for term in applied.result_terms)
+    assert all(
+        isinstance(term.expression, KernelAnnotatedExpression)
+        for term in applied.result_terms
+    )
 
 
 def test_h5_each_applied_result_contains_three_nested_integrals():
@@ -208,10 +214,10 @@ def test_h12_signs_remain_ordered_after_application():
 
     assert coefficients(applied) == (1, -1, -1, 1)
     assert tuple(term.as_expr() for term in applied.result_terms) == (
-        applied.result_terms[0].expression,
-        -applied.result_terms[1].expression,
-        -applied.result_terms[2].expression,
-        applied.result_terms[3].expression,
+        applied.result_terms[0].expression.expression,
+        -applied.result_terms[1].expression.expression,
+        -applied.result_terms[2].expression.expression,
+        applied.result_terms[3].expression.expression,
     )
 
 
@@ -227,12 +233,14 @@ def test_h13_ordered_structure_is_inspectable_without_sympy_add():
 def test_h14_sympy_projection_matches_sum_of_ordered_results():
     x, *_rest, f = scalar_symbols()
     expanded = expanded_main_expression()
-    applied = apply_linear_combination_ordered(expanded, f(x), x, mvp_atomic_rules())
+    applied = apply_linear_combination_ordered(expanded, f(x), x, regularizer_rules())
 
     expected_sum = sum(
-        (term.coefficient * term.expression for term in applied.result_terms),
+        (term.as_expr() for term in applied.result_terms),
         sp.Integer(0),
     )
     assert expressions(applied) == expected_applied_expressions()
     assert applied.as_expr() == expected_sum
-    assert apply_linear_combination(expanded, f(x), x, mvp_atomic_rules()) == expected_sum
+    result = apply_linear_combination(expanded, f(x), x, regularizer_rules())
+    assert isinstance(result, KernelAnnotatedExpression)
+    assert result.expression == expected_sum

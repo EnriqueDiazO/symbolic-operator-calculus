@@ -28,6 +28,7 @@ from .kernels import (
 )
 from .operators import LinearCombination, OperatorAtom, Scalar, main_expression
 from .relations import ModCompactRelation, ModCompactSchurRelation
+from .semantics import KernelAnnotatedExpression, KernelRepresentation
 from .schur import (
     FirstSchurCompactModelAction,
     apply_a22_first_schur_model_compact,
@@ -66,7 +67,7 @@ class FirstSchurDerivationTrace:
     m12_combination: KernelCombination
     m21: sp.Expr
     m12: sp.Expr
-    combined_kernel: sp.Integral
+    combined_kernel: KernelAnnotatedExpression
     compact_action: FirstSchurCompactModelAction
     output_variable: sp.Symbol
     input_variable: sp.Symbol
@@ -117,6 +118,7 @@ def build_first_schur_derivation_trace(
     outer_variable: sp.Symbol,
     middle_variable: sp.Symbol,
     rules: Mapping[OperatorAtom, AtomicAction] | None = None,
+    regularizer_kernel: KernelRepresentation | None = None,
 ) -> FirstSchurDerivationTrace:
     """Build and verify the structured m=2 derivation using existing APIs."""
 
@@ -159,6 +161,7 @@ def build_first_schur_derivation_trace(
         outer_variable=outer_variable,
         middle_variable=middle_variable,
         rules=resolved_rules,
+        regularizer_kernel=regularizer_kernel,
     )
     compact_action = apply_a22_first_schur_model_compact(
         operand,
@@ -167,6 +170,7 @@ def build_first_schur_derivation_trace(
         outer_variable=outer_variable,
         middle_variable=middle_variable,
         rules=resolved_rules,
+        regularizer_kernel=regularizer_kernel,
     )
     trace = FirstSchurDerivationTrace(
         offdiagonal_relations=(left_relation, right_relation),
@@ -189,6 +193,7 @@ def build_first_schur_derivation_trace(
         trace,
         operand,
         resolved_rules,
+        regularizer_kernel,
     )
     return trace
 
@@ -215,6 +220,7 @@ def _validate_derived_trace(
     trace: FirstSchurDerivationTrace,
     operand: sp.Expr,
     rules: Mapping[OperatorAtom, AtomicAction],
+    regularizer_kernel: KernelRepresentation | None,
 ) -> None:
     if trace.reduced_relation.exact != a22_first_schur_reduction():
         raise DerivationTraceError("reduced relation has an unexpected exact side.")
@@ -254,6 +260,7 @@ def _validate_derived_trace(
         outer_variable=trace.outer_variable,
         middle_variable=trace.middle_variable,
         rules=rules,
+        regularizer_kernel=regularizer_kernel,
     ):
         raise DerivationTraceError("combined kernel is inconsistent with the trace.")
     expected_action = apply_a22_first_schur_model_compact(
@@ -263,6 +270,7 @@ def _validate_derived_trace(
         outer_variable=trace.outer_variable,
         middle_variable=trace.middle_variable,
         rules=rules,
+        regularizer_kernel=regularizer_kernel,
     )
     if trace.compact_action != expected_action:
         raise DerivationTraceError("compact action is inconsistent with the trace.")

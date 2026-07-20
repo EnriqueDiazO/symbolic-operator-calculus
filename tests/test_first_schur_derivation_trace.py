@@ -33,6 +33,7 @@ from symbolic_operator_calculus import (
     m21_kernel,
     positive_decay_symbol,
 )
+from semantic_helpers import explicit_r11_kernel_representation
 
 
 def trace_variables():
@@ -48,6 +49,7 @@ def build_trace(*, rules=None):
         outer_variable=u,
         middle_variable=v,
         rules=rules,
+        regularizer_kernel=explicit_r11_kernel_representation(),
     )
 
 
@@ -163,6 +165,7 @@ def test_kernels_and_compact_action_match_existing_public_apis():
         y,
         outer_variable=u,
         middle_variable=v,
+        regularizer_kernel=explicit_r11_kernel_representation(),
     )
     assert trace.compact_action == apply_a22_first_schur_model_compact(
         f(x),
@@ -170,6 +173,7 @@ def test_kernels_and_compact_action_match_existing_public_apis():
         input_variable=y,
         outer_variable=u,
         middle_variable=v,
+        regularizer_kernel=explicit_r11_kernel_representation(),
     )
     assert trace.compact_action.relation == trace.reduced_relation
 

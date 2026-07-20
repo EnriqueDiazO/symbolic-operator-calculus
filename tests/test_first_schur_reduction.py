@@ -16,6 +16,7 @@ from symbolic_operator_calculus import (
     Wplus_12,
     ExactBlock,
     FirstSchurReduction,
+    KernelAnnotatedExpression,
     ModCompactSchurRelation,
     OperatorAtom,
     Product,
@@ -30,8 +31,8 @@ from symbolic_operator_calculus import (
     a22_first_schur_reduction,
     apply_linear_combination_ordered,
     main_expression,
-    mvp_atomic_rules,
 )
+from semantic_helpers import regularizer_rules
 
 
 HALF = Fraction(1, 2)
@@ -153,7 +154,7 @@ def test_schur_construction_adds_no_regularizer_cancellation_or_orientation():
 def test_complete_model_application_reuses_existing_engine_and_term_actions():
     x = sp.Symbol("x")
     f = sp.Function("f")
-    rules = mvp_atomic_rules()
+    rules = regularizer_rules()
     model = a22_first_schur_model()
 
     complete = apply_linear_combination_ordered(model, f(x), x, rules)
@@ -173,4 +174,8 @@ def test_complete_model_application_reuses_existing_engine_and_term_actions():
         -1,
         1,
     )
-    assert all(isinstance(term.expression, sp.Expr) for term in complete.terms)
+    assert all(isinstance(term.expression, sp.Expr) for term in complete.terms[:4])
+    assert all(
+        isinstance(term.expression, KernelAnnotatedExpression)
+        for term in complete.terms[4:]
+    )

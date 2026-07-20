@@ -424,7 +424,7 @@ def test_verification_evidence_is_derived_for_both_directions(
     assert evidence.original.product == trace.identity.original
     assert evidence.left.product == trace.identity.left
     assert evidence.right.product == trace.identity.right
-    assert trace.identity.exact is True
+    assert len(trace.identity.exact_relations) == 2
     with pytest.raises(FrozenInstanceError):
         evidence.actions_verified = False
 

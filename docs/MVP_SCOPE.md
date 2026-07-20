@@ -174,8 +174,9 @@ Responsabilidades propuestas:
 - `operators.py`: atomos de operador, producto ordenado y combinacion lineal.
 - `actions.py`: reglas de accion de multiplicacion, shift transportado e
   integral formal.
-- `kernels.py`: kernels formales \(L^+\), \(L^-\), \(R_{1,1}\), \(M_{1,2}\),
-  \(M_{2,1}\) y \(C_{2,2}^{(1)}\).
+- `kernels.py`: kernels formales \(L^+\), \(L^-\), \(M_{1,2}\), \(M_{2,1}\)
+  y construcciones \(C_{2,2}^{(1)}\) que exigen una `KernelRepresentation`
+  explicita para \(R_{1,1}\).
 - `composition.py`: generacion segura de variables mudas y composicion de
   kernels.
 - `fourier.py`: convencion de Fourier y calculo simbolico de \(K^+\) y
@@ -215,9 +216,16 @@ Los tests deben comparar estructura matematica, no solo strings LaTeX.
 ## Riesgos matematicos
 
 - Confundir \(A_{1,1}^{(-1)}\) con un inverso exacto. Mitigacion: tipo
-  `FormalRegularizer` sin reglas automaticas de cancelacion.
+  `RegularizerOperator`/`FormalRegularizer` sin reglas automaticas de
+  cancelacion ni kernel implicito.
 - Usar equivalencias modulo compactos como igualdades exactas. Mitigacion:
-  tipos de relacion separados y sin conversion implicita.
+  `ExactIdentity`, `FormalIdentity`, `ModCompactEquivalence` y
+  `ApproximateEquality` son tipos separados y sin conversion implicita. Una
+  equivalencia modulo compactos sin evidencia queda no certificada.
+- Inventar un kernel ordinario para un regularizador formal. Mitigacion:
+  `KernelRepresentationRequiredError` y `KernelRepresentation` explicita con
+  estatus, hipotesis y evidencia. Una integral SymPy sigue sin probar
+  convergencia o existencia operatorial.
 - Permitir reordenamiento de operadores al delegar demasiado en SymPy.
   Mitigacion: producto de operadores como tupla ordenada propia.
 - Captura accidental de variables mudas. Mitigacion: generador de nombres con

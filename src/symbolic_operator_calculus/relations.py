@@ -2,9 +2,14 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
 from .operators import LinearCombination, OperatorAtom, Product
+from .semantics import (
+    CertificationStatus,
+    ModCompactEquivalence,
+    RegularizerOperator,
+)
 
 
 def _validate_family(family: object) -> str:
@@ -40,7 +45,7 @@ class ExactBlock:
 
 
 @dataclass(frozen=True)
-class FormalRegularizer:
+class FormalRegularizer(RegularizerOperator):
     """Metadata associating a formal regularizer atom with an exact block.
 
     This association records neither an exact inverse nor an oriented
@@ -51,6 +56,7 @@ class FormalRegularizer:
     operator: OperatorAtom
 
     def __post_init__(self) -> None:
+        RegularizerOperator.__post_init__(self)
         if not isinstance(self.target, ExactBlock):
             raise TypeError("target must be an ExactBlock.")
         if not isinstance(self.operator, OperatorAtom):
@@ -61,7 +67,7 @@ class FormalRegularizer:
 
 @dataclass(frozen=True)
 class FirstSchurReduction:
-    """Exact metadata for ``diagonal - left * regularizer * right`` in m=2."""
+    """Formal algebraic metadata for ``diagonal - left * regularizer * right``."""
 
     diagonal: ExactBlock
     left: ExactBlock
@@ -92,16 +98,43 @@ class FirstSchurReduction:
 
 @dataclass(frozen=True)
 class ModCompactSchurRelation:
-    """Modulo-compact relation from a Schur reduction to an AST model."""
+    """Modulo-compact declaration from a Schur reduction to an AST model.
+
+    The declaration is uncertified unless the caller supplies ``evidence``.
+    No compact residual is inferred from the endpoint types.
+    """
 
     exact: FirstSchurReduction
     model: LinearCombination
+    space: object | None = None
+    compact_ideal: object | None = None
+    residual: object | None = None
+    evidence: object | None = None
+    semantic_relation: ModCompactEquivalence = field(init=False)
 
     def __post_init__(self) -> None:
         if not isinstance(self.exact, FirstSchurReduction):
             raise TypeError("exact must be a FirstSchurReduction.")
         if not isinstance(self.model, LinearCombination):
             raise TypeError("model must be a LinearCombination.")
+        object.__setattr__(
+            self,
+            "semantic_relation",
+            ModCompactEquivalence(
+                left=self.exact,
+                right=self.model,
+                space=self.space,
+                compact_ideal=self.compact_ideal,
+                residual=self.residual,
+                evidence=self.evidence,
+            ),
+        )
+
+    @property
+    def certification_status(self) -> CertificationStatus:
+        """Expose whether external compactness evidence was supplied."""
+
+        return self.semantic_relation.certification_status
 
 
 @dataclass(frozen=True)
@@ -130,10 +163,20 @@ class WienerHopfModel:
 
 @dataclass(frozen=True)
 class ModCompactRelation:
-    """Relation asserting exact block is equivalent to a model modulo compacta."""
+    """Modulo-compact declaration between an exact block and a model.
+
+    This compatibility wrapper retains the existing ``exact`` and ``model``
+    endpoints while exposing an explicit :class:`ModCompactEquivalence`.
+    It is uncertified by default and never proves that its residual is compact.
+    """
 
     exact: ExactBlock
     model: WienerHopfModel
+    space: object | None = None
+    compact_ideal: object | None = None
+    residual: object | None = None
+    evidence: object | None = None
+    semantic_relation: ModCompactEquivalence = field(init=False)
 
     def __post_init__(self) -> None:
         if not isinstance(self.exact, ExactBlock):
@@ -150,3 +193,21 @@ class ModCompactRelation:
             self.model.column,
         ):
             raise ValueError("exact block and model must reference the same block.")
+        object.__setattr__(
+            self,
+            "semantic_relation",
+            ModCompactEquivalence(
+                left=self.exact,
+                right=self.model,
+                space=self.space,
+                compact_ideal=self.compact_ideal,
+                residual=self.residual,
+                evidence=self.evidence,
+            ),
+        )
+
+    @property
+    def certification_status(self) -> CertificationStatus:
+        """Expose whether external compactness evidence was supplied."""
+
+        return self.semantic_relation.certification_status

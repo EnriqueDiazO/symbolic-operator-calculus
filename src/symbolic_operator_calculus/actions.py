@@ -15,6 +15,7 @@ from typing import TypeAlias
 
 import sympy as sp
 
+from .blocks import a11_formal_regularizer
 from .fourier import localized_lminus_kernel, localized_lplus_kernel
 from .operators import (
     G1,
@@ -37,8 +38,15 @@ from .substitution import (
     fresh_symbol,
     substitute_free_variable,
 )
+from .semantics import (
+    KernelAnnotatedExpression,
+    KernelRepresentation,
+    KernelRepresentationRequiredError,
+    RegularizerOperator,
+)
 
 ScalarFunction: TypeAlias = Callable[..., sp.Expr]
+ScalarActionResult: TypeAlias = sp.Expr | KernelAnnotatedExpression
 
 
 class AtomicActionError(Exception):
@@ -119,12 +127,14 @@ class AppliedTerm:
 
     coefficient: Scalar
     product: Product
-    expression: sp.Expr
+    expression: ScalarActionResult
 
     def as_expr(self) -> sp.Expr:
         """Project this ordered applied term to a signed SymPy expression."""
 
-        return _sympy_coefficient(self.coefficient) * self.expression
+        return _sympy_coefficient(self.coefficient) * _scalar_expression(
+            self.expression
+        )
 
 
 @dataclass(frozen=True)
@@ -144,6 +154,20 @@ class AppliedLinearCombination:
 
         return sum((term.as_expr() for term in self.result_terms), sp.Integer(0))
 
+    def as_result(self) -> ScalarActionResult:
+        """Project to a scalar result while retaining kernel annotations."""
+
+        expression = self.as_expr()
+        representations = tuple(
+            representation
+            for term in self.result_terms
+            if isinstance(term.expression, KernelAnnotatedExpression)
+            for representation in term.expression.kernel_representations
+        )
+        if not representations:
+            return expression
+        return KernelAnnotatedExpression(expression, representations)
+
 
 @dataclass(frozen=True)
 class MultiplicationAction:
@@ -153,12 +177,15 @@ class MultiplicationAction:
 
     def apply(
         self,
-        operand: sp.Expr,
+        operand: ScalarActionResult,
         variable: sp.Symbol,
         *,
         integration_variable: sp.Symbol | None = None,
-    ) -> sp.Expr:
-        return self.coefficient(variable) * operand
+    ) -> ScalarActionResult:
+        return _transform_result(
+            operand,
+            lambda expression: self.coefficient(variable) * expression,
+        )
 
 
 @dataclass(frozen=True)
@@ -167,11 +194,11 @@ class IdentityAction:
 
     def apply(
         self,
-        operand: sp.Expr,
+        operand: ScalarActionResult,
         variable: sp.Symbol,
         *,
         integration_variable: sp.Symbol | None = None,
-    ) -> sp.Expr:
+    ) -> ScalarActionResult:
         return operand
 
 
@@ -187,11 +214,11 @@ class PrincipalValueIntegralAction:
 
     def apply(
         self,
-        operand: sp.Expr,
+        operand: ScalarActionResult,
         variable: sp.Symbol,
         *,
         integration_variable: sp.Symbol | None = None,
-    ) -> sp.Expr:
+    ) -> ScalarActionResult:
         if integration_variable is None:
             raise MissingIntegrationVariableError(
                 "Principal-value actions require an explicit integration variable."
@@ -202,10 +229,13 @@ class PrincipalValueIntegralAction:
             integration_variable,
         )
         integral = sp.Integral(
-            substituted / (integration_variable - variable),
+            _scalar_expression(substituted) / (integration_variable - variable),
             (integration_variable, 0, sp.oo),
         )
-        return PrincipalValue(integral) / (sp.pi * sp.I)
+        return _rewrap_result(
+            PrincipalValue(integral) / (sp.pi * sp.I),
+            substituted,
+        )
 
 
 @dataclass(frozen=True)
@@ -217,13 +247,16 @@ class TransportedShiftAction:
 
     def apply(
         self,
-        operand: sp.Expr,
+        operand: ScalarActionResult,
         variable: sp.Symbol,
         *,
         integration_variable: sp.Symbol | None = None,
-    ) -> sp.Expr:
+    ) -> ScalarActionResult:
         shifted = _replace_free_variable(operand, variable, self.gamma * variable)
-        return self.rho(variable) * shifted
+        return _transform_result(
+            shifted,
+            lambda expression: self.rho(variable) * expression,
+        )
 
 
 @dataclass(frozen=True)
@@ -234,19 +267,33 @@ class IntegralKernelAction:
 
     def apply(
         self,
-        operand: sp.Expr,
+        operand: ScalarActionResult,
         variable: sp.Symbol,
         *,
         integration_variable: sp.Symbol | None = None,
-    ) -> sp.Integral:
+    ) -> ScalarActionResult:
         return _kernel_integral(self.kernel, operand, variable, integration_variable)
 
 
 @dataclass(frozen=True)
 class FormalRegularizerAction:
-    """Kernel action of the formal regularizer R11, without inverse rules."""
+    """Action of a formal regularizer with no implicit kernel."""
 
-    kernel: ScalarFunction
+    regularizer: RegularizerOperator
+    kernel_representation: KernelRepresentation | None = None
+
+    def __post_init__(self) -> None:
+        if not isinstance(self.regularizer, RegularizerOperator):
+            raise TypeError("regularizer must be a RegularizerOperator.")
+        if self.kernel_representation is not None:
+            if not isinstance(self.kernel_representation, KernelRepresentation):
+                raise TypeError(
+                    "kernel_representation must be a KernelRepresentation or None."
+                )
+            if self.kernel_representation.operator != self.regularizer:
+                raise ValueError(
+                    "kernel_representation must represent this regularizer."
+                )
 
     @property
     def is_formal_regularizer(self) -> bool:
@@ -254,12 +301,42 @@ class FormalRegularizerAction:
 
     def apply(
         self,
-        operand: sp.Expr,
+        operand: ScalarActionResult,
         variable: sp.Symbol,
         *,
         integration_variable: sp.Symbol | None = None,
-    ) -> sp.Integral:
-        return _kernel_integral(self.kernel, operand, variable, integration_variable)
+    ) -> KernelAnnotatedExpression:
+        if self.kernel_representation is None:
+            raise KernelRepresentationRequiredError(
+                "The regularizer is formal and has no explicit kernel "
+                "representation; no certified representation has been supplied. "
+                "Supply KernelRepresentation explicitly before "
+                "constructing an ordinary SymPy Integral."
+            )
+        if integration_variable is None:
+            raise MissingIntegrationVariableError(
+                "Integral kernel actions require an explicit integration variable."
+            )
+        representation = self.kernel_representation
+        kernel = representation.instantiate(variable, integration_variable)
+        substituted = _replace_free_variable(
+            operand,
+            variable,
+            integration_variable,
+        )
+        expression = sp.Integral(
+            kernel * _scalar_expression(substituted),
+            (
+                integration_variable,
+                representation.integration_domain.lower,
+                representation.integration_domain.upper,
+            ),
+        )
+        existing = _kernel_representations(substituted)
+        return KernelAnnotatedExpression(
+            expression,
+            existing + (representation,),
+        )
 
 
 AtomicAction: TypeAlias = (
@@ -280,10 +357,12 @@ gamma1 = sp.Symbol("gamma1")
 gamma2 = sp.Symbol("gamma2")
 Lplus_12_kernel = sp.Function("Lplus_12")
 Lminus_21_kernel = sp.Function("Lminus_21")
-R11_kernel = sp.Function("R11")
 
 
-def mvp_atomic_rules() -> Mapping[OperatorAtom, AtomicAction]:
+def mvp_atomic_rules(
+    *,
+    regularizer_kernel: KernelRepresentation | None = None,
+) -> Mapping[OperatorAtom, AtomicAction]:
     """Return the explicit atomic action mapping for the current MVP phase."""
 
     return MappingProxyType({
@@ -295,13 +374,17 @@ def mvp_atomic_rules() -> Mapping[OperatorAtom, AtomicAction]:
         Vtilde_alpha2: TransportedShiftAction(rho2, gamma2),
         Wplus_12: IntegralKernelAction(Lplus_12_kernel),
         Wminus_21: IntegralKernelAction(Lminus_21_kernel),
-        R11: FormalRegularizerAction(R11_kernel),
+        R11: FormalRegularizerAction(
+            a11_formal_regularizer(),
+            regularizer_kernel,
+        ),
     })
 
 
 def explicit_wiener_hopf_rules(
     *,
     decay: sp.Symbol | None = None,
+    regularizer_kernel: KernelRepresentation | None = None,
 ) -> Mapping[OperatorAtom, AtomicAction]:
     """Return local action rules using the normalized Fourier kernels.
 
@@ -311,7 +394,7 @@ def explicit_wiener_hopf_rules(
     formal default rules.
     """
 
-    rules = dict(mvp_atomic_rules())
+    rules = dict(mvp_atomic_rules(regularizer_kernel=regularizer_kernel))
     rules[Wplus_12] = IntegralKernelAction(
         partial(localized_lplus_kernel, decay=decay)
     )
@@ -323,12 +406,12 @@ def explicit_wiener_hopf_rules(
 
 def apply_atom(
     atom: OperatorAtom,
-    operand: sp.Expr,
+    operand: ScalarActionResult,
     variable: sp.Symbol,
     rules: Mapping[OperatorAtom, AtomicAction],
     *,
     integration_variable: sp.Symbol | None = None,
-) -> sp.Expr:
+) -> ScalarActionResult:
     """Apply exactly one operator atom using an explicit action mapping."""
 
     if not isinstance(atom, OperatorAtom):
@@ -352,12 +435,12 @@ def apply_atom(
 
 def apply_product(
     product: Product,
-    operand: sp.Expr,
+    operand: ScalarActionResult,
     variable: sp.Symbol,
     rules: Mapping[OperatorAtom, AtomicAction],
     *,
     integration_variable: sp.Symbol | None = None,
-) -> sp.Expr:
+) -> ScalarActionResult:
     """Apply an ordered product using the convention ``(AB)f = A(Bf)``.
 
     ``Product.factors`` stores factors in written left-to-right order. Applying
@@ -422,7 +505,7 @@ def apply_linear_combination(
     rules: Mapping[OperatorAtom, AtomicAction],
     *,
     integration_variable: sp.Symbol | None = None,
-) -> sp.Expr:
+) -> ScalarActionResult:
     """Apply an ordered linear combination and return its SymPy projection.
 
     The current AST stores each term as ``Term(coefficient, Product(...))``.
@@ -439,7 +522,7 @@ def apply_linear_combination(
         variable,
         rules,
         integration_variable=integration_variable,
-    ).as_expr()
+    ).as_result()
 
 
 def apply_linear_combination_ordered(
@@ -499,7 +582,7 @@ def _apply_linear_combination_term(
     rules: Mapping[OperatorAtom, AtomicAction],
     *,
     integration_variable: sp.Symbol | None = None,
-) -> sp.Expr:
+) -> ScalarActionResult:
     if len(product.factors) == 1 and isinstance(product.factors[0], OperatorAtom):
         return apply_atom(
             product.factors[0],
@@ -519,29 +602,35 @@ def _apply_linear_combination_term(
 
 def _kernel_integral(
     kernel: ScalarFunction,
-    operand: sp.Expr,
+    operand: ScalarActionResult,
     variable: sp.Symbol,
     integration_variable: sp.Symbol | None,
-) -> sp.Integral:
+) -> ScalarActionResult:
     if integration_variable is None:
         raise MissingIntegrationVariableError(
             "Integral kernel actions require an explicit integration variable."
         )
 
     substituted = _replace_free_variable(operand, variable, integration_variable)
-    return sp.Integral(
-        kernel(variable, integration_variable) * substituted,
+    integral = sp.Integral(
+        kernel(variable, integration_variable) * _scalar_expression(substituted),
         (integration_variable, 0, sp.oo),
     )
+    return _rewrap_result(integral, substituted)
 
 
 def _replace_free_variable(
-    operand: sp.Expr,
+    operand: ScalarActionResult,
     variable: sp.Symbol,
     replacement: sp.Expr,
-) -> sp.Expr:
+) -> ScalarActionResult:
     try:
-        return substitute_free_variable(operand, variable, replacement)
+        expression = substitute_free_variable(
+            _scalar_expression(operand),
+            variable,
+            replacement,
+        )
+        return _rewrap_result(expression, operand)
     except SafeSubstitutionError as exc:
         raise UnsafeScalarSubstitutionError(str(exc)) from exc
 
@@ -560,13 +649,14 @@ def _atom_needs_integration_variable(
 
 
 def _fresh_integration_variable(
-    expression: sp.Expr,
+    expression: ScalarActionResult,
     output_variable: sp.Symbol,
     generated_variables: set[sp.Symbol],
 ) -> sp.Symbol:
+    scalar_expression = _scalar_expression(expression)
     avoid = (
-        expression.free_symbols
-        | collect_bound_symbols(expression)
+        scalar_expression.free_symbols
+        | collect_bound_symbols(scalar_expression)
         | generated_variables
         | {output_variable}
     )
@@ -577,3 +667,34 @@ def _sympy_coefficient(coefficient: Scalar) -> sp.Expr:
     if isinstance(coefficient, Fraction):
         return sp.Rational(coefficient.numerator, coefficient.denominator)
     return sp.sympify(coefficient)
+
+
+def _scalar_expression(result: ScalarActionResult) -> sp.Expr:
+    if isinstance(result, KernelAnnotatedExpression):
+        return result.expression
+    return result
+
+
+def _kernel_representations(
+    result: ScalarActionResult,
+) -> tuple[KernelRepresentation, ...]:
+    if isinstance(result, KernelAnnotatedExpression):
+        return result.kernel_representations
+    return ()
+
+
+def _rewrap_result(
+    expression: sp.Expr,
+    source: ScalarActionResult,
+) -> ScalarActionResult:
+    representations = _kernel_representations(source)
+    if not representations:
+        return expression
+    return KernelAnnotatedExpression(expression, representations)
+
+
+def _transform_result(
+    result: ScalarActionResult,
+    transform: Callable[[sp.Expr], sp.Expr],
+) -> ScalarActionResult:
+    return _rewrap_result(transform(_scalar_expression(result)), result)

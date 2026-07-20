@@ -74,7 +74,7 @@ def a11_formal_regularizer() -> FormalRegularizer:
 
 
 def a22_first_schur_reduction() -> FirstSchurReduction:
-    """Return the exact metadata ``A22 - A21 R11 A12``."""
+    """Return formal algebraic metadata for ``A22 - A21 R11 A12``."""
 
     return FirstSchurReduction(
         diagonal=ExactBlock("A", 2, 2),

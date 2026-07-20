@@ -12,6 +12,8 @@ from symbolic_operator_calculus import (
     Wplus_12,
     FormalRegularizerAction,
     IntegralKernelAction,
+    KernelAnnotatedExpression,
+    KernelRepresentationRequiredError,
     LinearCombination,
     LinearCombinationApplicationError,
     MissingAtomicActionError,
@@ -28,6 +30,7 @@ from symbolic_operator_calculus import (
     main_expression,
     mvp_atomic_rules,
 )
+from semantic_helpers import regularizer_rules
 
 
 def symbols_and_functions():
@@ -137,19 +140,36 @@ def test_wiener_hopf_negative_action_is_formal_integral():
     assert result == expected
 
 
-def test_formal_regularizer_action_is_formal_integral():
+def test_formal_regularizer_action_requires_explicit_kernel_representation():
+    x, y, f, _ = symbols_and_functions()
+
+    with pytest.raises(KernelRepresentationRequiredError):
+        apply_atom(
+            R11,
+            f(x),
+            x,
+            mvp_atomic_rules(),
+            integration_variable=y,
+        )
+
+
+def test_explicit_formal_regularizer_kernel_produces_annotated_integral():
     x, y, f, _ = symbols_and_functions()
 
     result = apply_atom(
         R11,
         f(x),
         x,
-        mvp_atomic_rules(),
+        regularizer_rules(),
         integration_variable=y,
     )
 
     expected = sp.Integral(sp.Function("R11")(x, y) * f(y), (y, 0, sp.oo))
-    assert result == expected
+    assert isinstance(result, KernelAnnotatedExpression)
+    assert result.expression == expected
+    assert result.hypotheses == (
+        "R11 has the displayed formal kernel representation",
+    )
 
 
 def test_formal_regularizer_action_is_semantically_distinct():
@@ -360,7 +380,7 @@ def test_apply_product_composes_regularizer_after_shifted_kernel():
     gamma1 = sp.Symbol("gamma1")
     product = R11 * Vtilde_alpha1 * Wplus_12
 
-    result = apply_product(product, f(x), x, mvp_atomic_rules())
+    result = apply_product(product, f(x), x, regularizer_rules())
 
     expected = sp.Integral(
         sp.Function("R11")(x, v)
@@ -371,7 +391,8 @@ def test_apply_product_composes_regularizer_after_shifted_kernel():
         ),
         (v, 0, sp.oo),
     )
-    assert result == expected
+    assert isinstance(result, KernelAnnotatedExpression)
+    assert result.expression == expected
     assert integral_count(result) == 2
 
 
@@ -409,7 +430,7 @@ def test_main_term_product_produces_three_nested_integrals():
     gamma2 = sp.Symbol("gamma2")
     product = main_expression().terms[0].product
 
-    result = apply_product(product, f(x), x, mvp_atomic_rules())
+    result = apply_product(product, f(x), x, regularizer_rules())
 
     expected = sp.Function("rho2")(x) * sp.Integral(
         sp.Function("Lminus_21")(gamma2 * x, u)
@@ -424,14 +445,15 @@ def test_main_term_product_produces_three_nested_integrals():
         ),
         (u, 0, sp.oo),
     )
-    assert result == expected
+    assert isinstance(result, KernelAnnotatedExpression)
+    assert result.expression == expected
     assert integral_count(result) == 3
 
 
 def test_main_term_rho1_uses_regularizer_integration_variable():
     x, _, f, _ = symbols_and_functions()
     v = sp.Symbol("v")
-    result = apply_product(main_expression().terms[0].product, f(x), x, mvp_atomic_rules())
+    result = apply_product(main_expression().terms[0].product, f(x), x, regularizer_rules())
 
     assert result.has(sp.Function("rho1")(v))
     assert not result.has(sp.Function("rho1")(x))
@@ -440,7 +462,7 @@ def test_main_term_rho1_uses_regularizer_integration_variable():
 def test_main_term_rho2_uses_external_variable():
     x, _, f, _ = symbols_and_functions()
     u, v, y = sp.symbols("u v y")
-    result = apply_product(main_expression().terms[0].product, f(x), x, mvp_atomic_rules())
+    result = apply_product(main_expression().terms[0].product, f(x), x, regularizer_rules())
 
     assert result.has(sp.Function("rho2")(x))
     assert not result.has(sp.Function("rho2")(u))
@@ -452,7 +474,7 @@ def test_main_term_gamma1_only_shifts_lplus_output_variable():
     x, y, f, _ = symbols_and_functions()
     v = sp.Symbol("v")
     gamma1 = sp.Symbol("gamma1")
-    result = apply_product(main_expression().terms[0].product, f(x), x, mvp_atomic_rules())
+    result = apply_product(main_expression().terms[0].product, f(x), x, regularizer_rules())
 
     assert result.has(sp.Function("Lplus_12")(gamma1 * v, y))
     assert not result.has(sp.Function("Lplus_12")(v, y))
@@ -463,7 +485,7 @@ def test_main_term_gamma2_only_shifts_lminus_output_variable():
     x, _, f, _ = symbols_and_functions()
     u = sp.Symbol("u")
     gamma2 = sp.Symbol("gamma2")
-    result = apply_product(main_expression().terms[0].product, f(x), x, mvp_atomic_rules())
+    result = apply_product(main_expression().terms[0].product, f(x), x, regularizer_rules())
 
     assert result.has(sp.Function("Lminus_21")(gamma2 * x, u))
     assert not result.has(sp.Function("Lminus_21")(x, u))
@@ -473,7 +495,7 @@ def test_main_term_gamma2_only_shifts_lminus_output_variable():
 def test_main_term_bound_variables_are_distinct_and_not_captured():
     x, _, f, _ = symbols_and_functions()
     y, u, v = sp.symbols("y u v")
-    result = apply_product(main_expression().terms[0].product, f(x), x, mvp_atomic_rules())
+    result = apply_product(main_expression().terms[0].product, f(x), x, regularizer_rules())
 
     bound_variables = {
         limit[0]
@@ -489,7 +511,7 @@ def test_main_term_product_does_not_mutate_original_product():
     product = main_expression().terms[0].product
     original_factors = product.factors
 
-    apply_product(product, f(x), x, mvp_atomic_rules())
+    apply_product(product, f(x), x, regularizer_rules())
 
     assert product.factors == original_factors
 

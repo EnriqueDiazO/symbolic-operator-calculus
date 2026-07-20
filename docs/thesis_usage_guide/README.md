@@ -166,8 +166,15 @@ fabricado.
 
 - El dominio Wiener–Hopf relativo y el AST de Schur siguen separados.
 - $R_{1,1}$ es un regularizador formal, no un inverso computado.
+- $R_{1,1}$ no posee un kernel implicito: toda construccion integral exige una
+  `KernelRepresentation` aportada explicitamente y conserva su estatus e
+  hipotesis. La integral resultante no prueba convergencia ni existencia del
+  operador.
 - La equivalencia módulo compactos es metadato matemático validado, no una
-  decisión automática de compacidad.
+  decisión automática de compacidad; sin evidencia queda marcada como no
+  certificada y no es intercambiable con `ExactIdentity`.
+- La construccion de Schur sigue siendo formal si no se aportan certificados
+  analiticos; el paquete no demuestra compacidad, Fredholmness o acotacion.
 - No hay reducción general para $m>2$, inversión real de operadores ni
   evaluación numérica general.
 - La guía demuestra el comportamiento del prototipo; no reemplaza las pruebas

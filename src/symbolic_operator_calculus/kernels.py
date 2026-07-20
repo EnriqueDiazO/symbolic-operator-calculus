@@ -14,7 +14,7 @@ from .actions import (
     apply_linear_combination_ordered,
     mvp_atomic_rules,
 )
-from .blocks import a22_first_schur_correction
+from .blocks import a11_formal_regularizer, a22_first_schur_correction
 from .operators import (
     R11,
     LinearCombination,
@@ -23,6 +23,11 @@ from .operators import (
     Term,
 )
 from .substitution import collect_bound_symbols, fresh_symbol
+from .semantics import (
+    KernelAnnotatedExpression,
+    KernelRepresentation,
+    KernelRepresentationRequiredError,
+)
 
 
 class KernelExtractionError(ValueError):
@@ -68,9 +73,6 @@ class FirstSchurCorrectionFactorization:
     left: LinearCombination
     regularizer: OperatorAtom
     right: LinearCombination
-
-
-R11_kernel = sp.Function("R11")
 
 
 def factor_first_schur_correction(
@@ -156,7 +158,7 @@ def factor_first_schur_correction(
 
 
 def extract_integral_kernel(
-    applied_expression: sp.Expr,
+    applied_expression: sp.Expr | KernelAnnotatedExpression,
     output_variable: sp.Symbol,
     input_function: sp.FunctionClass,
     input_variable: sp.Symbol,
@@ -169,7 +171,12 @@ def extract_integral_kernel(
     variables bound, and leaves the input variable free in the extracted kernel.
     """
 
-    if not isinstance(applied_expression, sp.Expr):
+    scalar_expression = (
+        applied_expression.expression
+        if isinstance(applied_expression, KernelAnnotatedExpression)
+        else applied_expression
+    )
+    if not isinstance(scalar_expression, sp.Expr):
         raise KernelExtractionError("applied_expression must be a SymPy expression.")
     if not isinstance(output_variable, sp.Symbol):
         raise KernelExtractionError("output_variable must be a SymPy Symbol.")
@@ -178,7 +185,7 @@ def extract_integral_kernel(
 
     input_atom = input_function(input_variable)
     kernel, found = _remove_input_integral(
-        applied_expression,
+        scalar_expression,
         input_atom,
         input_variable,
     )
@@ -293,14 +300,17 @@ def c22_integrand(
     input_variable: sp.Symbol,
     *,
     rules: Mapping[OperatorAtom, AtomicAction] | None = None,
-) -> sp.Expr:
+    regularizer_kernel: KernelRepresentation | None = None,
+) -> KernelAnnotatedExpression:
     """Return the scalar integrand ``M21 * R11 * M12``."""
 
-    return (
+    representation = _require_regularizer_kernel(regularizer_kernel)
+    expression = (
         m21_kernel(output_variable, outer_variable, rules=rules)
-        * R11_kernel(outer_variable, middle_variable)
+        * representation.instantiate(outer_variable, middle_variable)
         * m12_kernel(middle_variable, input_variable, rules=rules)
     )
+    return KernelAnnotatedExpression(expression, (representation,))
 
 
 def combined_kernel_c22(
@@ -310,24 +320,31 @@ def combined_kernel_c22(
     outer_variable: sp.Symbol | None = None,
     middle_variable: sp.Symbol | None = None,
     rules: Mapping[OperatorAtom, AtomicAction] | None = None,
-) -> sp.Integral:
-    """Derive the combined kernel ``C22(x, y)`` using the selected rules."""
+    regularizer_kernel: KernelRepresentation | None = None,
+) -> KernelAnnotatedExpression:
+    """Derive ``C22`` only from an explicit regularizer kernel representation."""
 
+    representation = _require_regularizer_kernel(regularizer_kernel)
     outer_variable, middle_variable = _resolve_c22_variables(
         output_variable,
         input_variable,
         outer_variable,
         middle_variable,
     )
-    return sp.Integral(
+    expression = sp.Integral(
         m21_kernel(output_variable, outer_variable, rules=rules)
         * sp.Integral(
-            R11_kernel(outer_variable, middle_variable)
+            representation.instantiate(outer_variable, middle_variable)
             * m12_kernel(middle_variable, input_variable, rules=rules),
-            (middle_variable, 0, sp.oo),
+            (
+                middle_variable,
+                representation.integration_domain.lower,
+                representation.integration_domain.upper,
+            ),
         ),
         (outer_variable, 0, sp.oo),
     )
+    return KernelAnnotatedExpression(expression, (representation,))
 
 
 def apply_combined_kernel_c22(
@@ -338,8 +355,9 @@ def apply_combined_kernel_c22(
     outer_variable: sp.Symbol | None = None,
     middle_variable: sp.Symbol | None = None,
     rules: Mapping[OperatorAtom, AtomicAction] | None = None,
-) -> sp.Integral:
-    """Return the selected compact action ``Integral(C22(x,y) f(y), dy)``."""
+    regularizer_kernel: KernelRepresentation | None = None,
+) -> KernelAnnotatedExpression:
+    """Return the annotated action ``Integral(C22(x,y) f(y), dy)``."""
 
     kernel = combined_kernel_c22(
         output_variable,
@@ -347,8 +365,30 @@ def apply_combined_kernel_c22(
         outer_variable=outer_variable,
         middle_variable=middle_variable,
         rules=rules,
+        regularizer_kernel=regularizer_kernel,
     )
-    return sp.Integral(kernel * input_function(input_variable), (input_variable, 0, sp.oo))
+    expression = sp.Integral(
+        kernel.expression * input_function(input_variable),
+        (input_variable, 0, sp.oo),
+    )
+    return KernelAnnotatedExpression(expression, kernel.kernel_representations)
+
+
+def _require_regularizer_kernel(
+    representation: KernelRepresentation | None,
+) -> KernelRepresentation:
+    if representation is None:
+        raise KernelRepresentationRequiredError(
+            "The Schur regularizer is formal and has no explicit kernel "
+            "representation; no certified representation has been supplied. "
+            "Supply KernelRepresentation explicitly; no "
+            "ordinary R11(u, v) kernel is created automatically."
+        )
+    if not isinstance(representation, KernelRepresentation):
+        raise TypeError("regularizer_kernel must be a KernelRepresentation.")
+    if representation.operator != a11_formal_regularizer():
+        raise ValueError("regularizer_kernel must represent the A11 regularizer.")
+    return representation
 
 
 def _unique_products(products: Iterable[Product]) -> tuple[Product, ...]:

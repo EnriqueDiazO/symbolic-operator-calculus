@@ -233,22 +233,38 @@ R_{1,1}:=A_{1,1}^{(-1)}
 \]
 
 denota un regularizador formal modulo operadores compactos. No es un inverso
-exacto en el MVP.
+exacto en el MVP y no posee automaticamente un kernel.
 
-Cuando se usa su kernel,
+La expresion integral
 
 \[
 (R_{1,1}f)(u)
 =
 \int_0^\infty R_{1,1}(u,v)f(v)\,dv.
 \]
+solo se puede construir cuando el usuario aporta explicitamente una
+`KernelRepresentation`. Este objeto identifica el regularizador, la expresion
+del kernel, sus variables, el dominio de integracion, su estatus semantico y
+las hipotesis o evidencia externas. Sin ese objeto, las APIs de acciones y de
+Schur lanzan `KernelRepresentationRequiredError`; no se crea automaticamente
+una funcion simbolica `R11(u, v)`.
 
-El kernel \(R_{1,1}(u,v)\) permanece formal. No se permiten cancelaciones
-automaticas como \(A_{1,1}R_{1,1}=I\) ni \(R_{1,1}A_{1,1}=I\).
+Una `KernelRepresentation` formal o asumida no prueba que el kernel exista como
+funcion ordinaria. Incluso con una representacion certificada externamente, una
+`Integral` de SymPy no prueba convergencia, acotacion ni existencia del operador.
+No se permiten cancelaciones automaticas como \(A_{1,1}R_{1,1}=I\) ni
+\(R_{1,1}A_{1,1}=I\).
 
-## Igualdad exacta y equivalencia modulo compactos
+## Tipos de relacion semantica
 
-El MVP distingue dos tipos de relacion:
+El modulo `semantics.py` distingue cuatro tipos inmutables y no convertibles:
+
+- `ExactIdentity`, con evidencia explicita;
+- `FormalIdentity`, que no afirma validez analitica o exacta;
+- `ModCompactEquivalence`, certificada solo si el usuario aporta evidencia;
+- `ApproximateEquality`, con tolerancia, norma o criterio y residual explicitos.
+
+En particular, el MVP distingue
 
 \[
 A=B
@@ -263,8 +279,10 @@ A\simeq B
 para equivalencia modulo compactos.
 
 Una equivalencia modulo compactos no puede ser usada automaticamente como una
-identidad exacta. Cualquier transformacion que dependa de \(\simeq\) debe estar
-marcada estructuralmente como tal.
+identidad exacta. `ModCompactRelation` y `ModCompactSchurRelation` conservan sus
+endpoints historicos, pero exponen una `ModCompactEquivalence` no certificada
+por defecto. Los campos de espacio, ideal, residual y evidencia son datos
+aportados; el codigo no infiere que un residual sea compacto.
 
 ## Invariantes de operadores Wiener–Hopf relativos
 
@@ -288,12 +306,13 @@ W(b_{k,j}^{\mathrm R})V_{\beta_{k,j}}.
 
 El orden de estos factores, su par \((k,j)\), sus escalas y la procedencia de
 los tres simbolos forman parte de la estructura validada. En
-`RelativeWienerHopfIdentity`, `exact` es una propiedad derivada y de solo
-lectura: indica que las tres formas canonicas pertenecen al mismo modelo L1 y
-que sus metadatos son internamente coherentes. No afirma que los tres productos
-hayan sido aplicados independientemente a una funcion. Esa semantica ejecutable
-y la verificacion algebraica independiente de correspondencias quedan fuera de
-A3.1 y corresponden a A3.2/A3.3.
+`RelativeWienerHopfIdentity`, `exact_relations` contiene dos objetos
+`ExactIdentity` inmutables, cada uno con evidencia de la forma canonica y de la
+procedencia L1 validadas. No se usa un booleano `exact`. Estas relaciones no
+afirman por si solas que los tres productos hayan sido aplicados
+independientemente a una funcion. Esa semantica ejecutable y la verificacion
+algebraica independiente de correspondencias quedan fuera de A3.1 y
+corresponden a A3.2/A3.3.
 
 ## Semántica ejecutable de productos Wiener–Hopf relativos
 
@@ -326,8 +345,9 @@ En el producto original, el factor \(\gamma_j\) surge del cambio de variable
 inducido por \(V_{\alpha_j}^{-1}\); no forma parte de la accion atomica de una
 dilatacion. La igualdad de los tres kernels se comprueba algebraicamente y se
 registra como evidencia ejecutable derivada. Esta evidencia es distinta de
-`RelativeWienerHopfIdentity.exact`, que continua significando coherencia
-estructural y no depende de las variables elegidas para aplicar los productos.
+`RelativeWienerHopfIdentity.exact_relations`, que registra identidades
+estructurales tipadas y no depende de las variables elegidas para aplicar los
+productos.
 
 ## Correspondencias Fourier de símbolos relativos
 
@@ -355,8 +375,8 @@ resultados calculados se comparan algebraicamente con los campos almacenados
 por L1. La evidencia `correspondences_verified` es inmutable y derivada; no es
 un alias de esos campos.
 
-Las tres evidencias tienen significados distintos: `identity.exact` certifica
-la coherencia estructural de los productos, `actions_verified` certifica la
+Las tres evidencias tienen significados distintos: `identity.exact_relations`
+registra la coherencia estructural tipada de los productos, `actions_verified` certifica la
 igualdad de sus acciones normalizadas y `correspondences_verified` certifica
 las correspondencias Fourier reconstruidas independientemente.
 
@@ -418,7 +438,8 @@ M_{2,1}(x,u)
 G_2(x)L^-_{2,1}(x,u).
 \]
 
-El kernel combinado del MVP es
+Si, y solo si, se ha aportado una `KernelRepresentation` de \(R_{1,1}\),
+el kernel combinado formal del MVP se representa como
 
 \[
 C_{2,2}^{(1)}(x,y)
@@ -431,13 +452,19 @@ M_{1,2}(v,y)
 \,dv\,du.
 \]
 
-Despues,
+Despues puede construirse formalmente
 
 \[
 (C_{2,2}^{(1)}f)(x)
 =
 \int_0^\infty C_{2,2}^{(1)}(x,y)f(y)\,dy.
 \]
+
+Ambas integrales quedan envueltas en `KernelAnnotatedExpression`, que conserva
+la representacion, el estatus y las hipotesis aportadas. La reduccion algebraica
+de Schur \(A_{22}-A_{21}R_{11}A_{12}\) sigue existiendo sin kernel; lo que se
+prohibe es su materializacion integral automatica. Ninguna de estas expresiones
+demuestra compacidad, convergencia, acotacion o propiedades Fredholm.
 
 ## LaTeX
 

@@ -11,6 +11,8 @@ from symbolic_operator_calculus import (
     R11,
     ExactBlock,
     FormalRegularizer,
+    KernelAnnotatedExpression,
+    KernelRepresentationRequiredError,
     ModCompactRelation,
     OperatorAtom,
     Product,
@@ -20,6 +22,7 @@ from symbolic_operator_calculus import (
     apply_atom,
     mvp_atomic_rules,
 )
+from semantic_helpers import regularizer_rules
 
 
 def test_formal_regularizer_is_immutable_non_operator_metadata():
@@ -74,7 +77,21 @@ def test_a11_exact_operator_remains_the_exact_four_term_expression():
     )
 
 
-def test_r11_action_and_kernel_remain_formal():
+def test_r11_without_kernel_representation_is_rejected():
+    x, y = sp.symbols("x y")
+    f = sp.Function("f")
+
+    with pytest.raises(KernelRepresentationRequiredError):
+        apply_atom(
+            R11,
+            f(x),
+            x,
+            mvp_atomic_rules(),
+            integration_variable=y,
+        )
+
+
+def test_explicit_r11_kernel_representation_remains_formal_and_annotated():
     x, y = sp.symbols("x y")
     f = sp.Function("f")
 
@@ -82,11 +99,12 @@ def test_r11_action_and_kernel_remain_formal():
         R11,
         f(x),
         x,
-        mvp_atomic_rules(),
+        regularizer_rules(),
         integration_variable=y,
     )
 
-    assert result == sp.Integral(
+    assert isinstance(result, KernelAnnotatedExpression)
+    assert result.expression == sp.Integral(
         sp.Function("R11")(x, y) * f(y),
         (y, 0, sp.oo),
     )

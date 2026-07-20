@@ -23,6 +23,7 @@ from .operators import (
 )
 from .relations import ExactBlock, FirstSchurReduction
 from .relative_wiener_hopf import RelativeWienerHopfDerivationTrace
+from .semantics import KernelAnnotatedExpression
 
 
 OPERATOR_LATEX: dict[str, str] = {
@@ -250,9 +251,13 @@ def render_linear_combination_latex(combination: LinearCombination) -> str:
     return "".join(pieces) if pieces else "0"
 
 
-def render_scalar_latex(expression: sp.Expr) -> str:
+def render_scalar_latex(
+    expression: sp.Expr | KernelAnnotatedExpression,
+) -> str:
     """Render a scalar SymPy expression with controlled known names."""
 
+    if isinstance(expression, KernelAnnotatedExpression):
+        expression = expression.expression
     if not isinstance(expression, sp.Expr):
         raise TypeError("expression must be a SymPy expression.")
     return _StructuredScalarLatexPrinter().doprint(expression)
@@ -284,15 +289,15 @@ def render_kernel_combination_latex(combination: KernelCombination) -> str:
 
 
 def render_combined_kernel_action_latex(
-    action: sp.Expr,
+    action: sp.Expr | KernelAnnotatedExpression,
     output_variable: sp.Symbol,
     input_function: sp.FunctionClass,
     input_variable: sp.Symbol,
 ) -> str:
     """Render the selected C22 action and its existing expanded expression."""
 
-    if not isinstance(action, sp.Expr):
-        raise TypeError("action must be a SymPy expression.")
+    if not isinstance(action, (sp.Expr, KernelAnnotatedExpression)):
+        raise TypeError("action must be a SymPy or annotated kernel expression.")
     if not isinstance(output_variable, sp.Symbol) or not isinstance(
         input_variable,
         sp.Symbol,

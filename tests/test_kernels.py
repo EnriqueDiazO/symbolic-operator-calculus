@@ -10,19 +10,34 @@ from symbolic_operator_calculus import (
     Wplus_12,
     KernelCombination,
     KernelTerm,
-    apply_combined_kernel_c22,
+    apply_combined_kernel_c22 as _apply_combined_kernel_c22,
     apply_linear_combination_ordered,
-    c22_integrand,
+    c22_integrand as _c22_integrand,
     collect_bound_symbols,
-    combined_kernel_c22,
+    combined_kernel_c22 as _combined_kernel_c22,
     expand_ordered,
     extract_applied_kernels,
     extract_integral_kernel,
     m12_kernel,
     m21_kernel,
     main_expression,
-    mvp_atomic_rules,
 )
+from semantic_helpers import explicit_r11_kernel_representation, regularizer_rules
+
+
+def c22_integrand(*args, **kwargs):
+    kwargs["regularizer_kernel"] = explicit_r11_kernel_representation()
+    return _c22_integrand(*args, **kwargs).expression
+
+
+def combined_kernel_c22(*args, **kwargs):
+    kwargs["regularizer_kernel"] = explicit_r11_kernel_representation()
+    return _combined_kernel_c22(*args, **kwargs).expression
+
+
+def apply_combined_kernel_c22(*args, **kwargs):
+    kwargs["regularizer_kernel"] = explicit_r11_kernel_representation()
+    return _apply_combined_kernel_c22(*args, **kwargs).expression
 
 
 REQUIRED_FACTORS = (
@@ -44,7 +59,7 @@ def applied_terms():
         expand_ordered(main_expression()),
         f(x),
         x,
-        mvp_atomic_rules(),
+        regularizer_rules(),
     )
 
 
