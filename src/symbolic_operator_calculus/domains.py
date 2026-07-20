@@ -302,6 +302,8 @@ class AssumptionContext:
         seen: set[str] = set()
         for value in supplied:
             proposition = _as_proposition(value)
+            if proposition is sp.true:
+                continue
             key = _structural_key(proposition)
             if key not in seen:
                 seen.add(key)
@@ -421,6 +423,13 @@ class DomainRegion:
         if self.kind in strip_kinds:
             if lower is None or upper is None:
                 raise InvalidDomainError("a strip requires lower and upper bounds.")
+            if (
+                lower.is_extended_real is not True
+                or upper.is_extended_real is not True
+            ):
+                raise InvalidDomainError(
+                    "strip bounds must be provably extended-real values."
+                )
             comparison = _number_order(lower, upper)
             if comparison is not None and comparison >= 0:
                 raise IncompatibleDomainError(
@@ -818,12 +827,17 @@ class ComplexDomain:
         """Return only membership that the limited internal rules establish."""
 
         point_expression = sp.sympify(point)
+        complex_membership = _relational_membership(
+            sp.S.Complexes.contains(point_expression)
+        )
+        if complex_membership is MembershipStatus.NO:
+            return MembershipStatus.NO
         if (
             self.assumption_context.consistency_status
             is ConsistencyStatus.UNDETERMINED
         ):
             return MembershipStatus.UNDETERMINED
-        result = MembershipStatus.YES
+        result = complex_membership
         for region in self.regions:
             membership = _region_membership(region, self.variable, point_expression)
             if membership is MembershipStatus.NO:

@@ -15,6 +15,7 @@ from symbolic_operator_calculus import (
     FormalIdentity,
     IdentityApplicabilityError,
     IdentityScopeError,
+    IdentityVerificationError,
     IdentityVerificationIndeterminateError,
     IncompatibleDomainError,
     MembershipStatus,
@@ -217,6 +218,45 @@ def test_declared_detected_and_external_origins_remain_distinct():
     assert detected.certification_status is CertificationStatus.UNCERTIFIED
 
 
+@pytest.mark.parametrize(
+    "origin",
+    (
+        SingularityOrigin.USER_DECLARED,
+        SingularityOrigin.EXTERNAL_EVIDENCE,
+    ),
+)
+def test_noninternal_avoidance_is_not_used_as_a_proof(origin):
+    z = sp.Symbol("z", real=True)
+    evidence = "external source" if origin is SingularityOrigin.EXTERNAL_EVIDENCE else None
+    pole = Singularity(0, SingularityKind.POLE, z, order=1)
+    avoidance = SingularityAvoidance(
+        0,
+        SingularityKind.POLE,
+        z,
+        AssumptionContext(),
+        origin=origin,
+        evidence=evidence,
+    )
+    singular_set = SingularSet((pole,), avoidances=(avoidance,))
+    domain = ComplexDomain.real_line(z)
+    identity = ConditionalIdentity(
+        lhs=sp.Integer(1),
+        rhs=sp.Integer(1),
+        assumption_context=AssumptionContext(),
+        domain=domain,
+        singular_set=singular_set,
+        scope=ExactIdentityScope.SCALAR_SYMBOLIC,
+    )
+
+    assert singular_set.avoidance_status(domain) is MembershipStatus.NO
+    with pytest.raises(IdentityApplicabilityError, match="singularities"):
+        require_applicable_identity(
+            identity,
+            available_context=AssumptionContext(),
+            available_domain=domain,
+        )
+
+
 def test_singularities_and_avoidances_are_immutable_and_hashable():
     z = sp.Symbol("z")
     pole = Singularity(0, SingularityKind.POLE, z, order=1)
@@ -282,6 +322,21 @@ def test_reference_coth_family_has_all_scalar_conditional_identities(coth_family
             ConditionalVerificationStatus.SYMBOLICALLY_CHECKED_UNDER_ASSUMPTIONS
         )
         assert identity.singular_set.singularities
+
+
+def test_coth_family_uses_declared_real_domain_for_generic_symbols():
+    lam, kappa = sp.symbols("lambda kappa")
+    family = build_coth_conditional_identities(lam, kappa)
+
+    assert all(
+        singularity.location == 0
+        for singularity in family.product.singular_set.singularities
+    )
+    assert require_applicable_identity(
+        family.product,
+        available_context=family.product.assumption_context,
+        available_domain=family.product.domain,
+    ) is family.product
 
 
 def test_conditional_identity_is_applicable_with_all_conditions(coth_family):
@@ -383,8 +438,8 @@ def test_safe_substitution_updates_every_component_and_retains_conditions(coth_f
     _, kappa, family = coth_family
     specialized = family.product.substitute({kappa: sp.Rational(1, 2)})
 
-    assert specialized.assumption_context.assumptions == (sp.true,)
-    assert specialized.domain.assumption_context.assumptions == (sp.true,)
+    assert specialized.assumption_context.is_empty
+    assert specialized.domain.assumption_context.is_empty
     assert len(specialized.singular_set.singularities) == len(
         family.product.singular_set.singularities
     )
@@ -416,6 +471,8 @@ def test_conditional_latex_keeps_conditions_domain_singularities_and_status(coth
     assert r"\kappa < 1" in latex
     assert r"\lambda\in\mathbb{R}" in latex
     assert r"\text{pole}" in latex
+    assert r"\lambda=0" in latex
+    assert r"\lambda\in0" not in latex
     assert "symbolically checked under assumptions" in latex
 
 
@@ -566,6 +623,13 @@ def test_undetermined_consistency_is_never_accepted_as_consistent():
             available_context=context,
             available_domain=identity.domain,
         )
+    with pytest.raises(TypeError, match="unexpected keyword"):
+        require_applicable_identity(
+            identity,
+            available_context=context,
+            available_domain=identity.domain,
+            require_decided_consistency=False,
+        )
 
 
 def test_multiplication_unions_metadata_and_never_strengthens_status(coth_family):
@@ -653,9 +717,297 @@ def test_composite_logarithm_uses_preimage_branch_sets():
     assert isinstance(cut.location, sp.ConditionSet)
     assert point.variable == z
     assert cut.variable == z
-    ExactIdentityRequiredError,
-    ExactIdentityScope,
-    FormalIdentity,
-    IdentityApplicabilityError,
-    IdentityScopeError,
-    IdentityVerificationIndeterminateError,
+
+
+@pytest.mark.parametrize(
+    ("value", "expected"),
+    (
+        (-1, MembershipStatus.YES),
+        (sp.Rational(-1, 2), MembershipStatus.NO),
+    ),
+)
+def test_shifted_coth_negative_integer_and_half_integer_status(value, expected):
+    lam, kappa = sp.symbols("lambda kappa", real=True)
+    singular_set = detect_singularities(
+        sp.coth(sp.pi * (lam + sp.I * kappa)),
+        lam,
+    )
+    context = AssumptionContext((sp.Eq(kappa, value),))
+
+    assert singular_set.contains_point(
+        0,
+        variable=lam,
+        available_context=context,
+    ) is expected
+
+
+def test_negative_open_unit_interval_explicitly_avoids_shifted_coth_pole():
+    lam, kappa = sp.symbols("lambda kappa", real=True)
+    context = AssumptionContext((kappa > -1, kappa < 0))
+    domain = ComplexDomain.real_line(lam, assumption_context=context)
+    singular_set = detect_singularities(
+        sp.coth(sp.pi * (lam + sp.I * kappa)),
+        lam,
+        assumptions=context,
+    )
+
+    assert len(singular_set.avoidances) == 1
+    assert singular_set.contains_point(
+        0,
+        variable=lam,
+        available_context=context,
+    ) is MembershipStatus.NO
+    assert singular_set.avoidance_status(domain) is MembershipStatus.YES
+
+
+def test_shifted_coth_with_complex_variable_keeps_full_pole_lattice():
+    z, kappa = sp.symbols("z kappa")
+    integer = sp.Symbol("n", integer=True)
+
+    pole = detect_singularities(
+        sp.coth(sp.pi * (z + sp.I * kappa)),
+        z,
+    ).singularities[0]
+
+    assert pole.location == sp.ImageSet(
+        sp.Lambda(integer, sp.I * (integer - kappa)),
+        sp.S.Integers,
+    )
+    assert pole.conditions.is_empty
+    assert pole.order == 1
+
+
+def test_scaled_coth_rule_does_not_match_twice_pi():
+    z = sp.Symbol("z")
+
+    singular_set = detect_singularities(sp.coth(2 * sp.pi * z), z)
+
+    assert singular_set.is_empty
+
+
+def test_reciprocal_squared_sinh_has_second_order_poles():
+    z = sp.Symbol("z")
+
+    pole = detect_singularities(sp.sinh(sp.pi * z) ** -2, z).singularities[0]
+
+    assert pole.kind is SingularityKind.POLE
+    assert pole.order == 2
+
+
+def test_integer_power_has_no_branch_record_but_negative_power_is_excluded():
+    z = sp.Symbol("z")
+
+    assert detect_singularities(z**3, z).is_empty
+    reciprocal = detect_singularities(z**-2, z)
+
+    assert {item.kind for item in reciprocal.singularities} == {
+        SingularityKind.GENERAL_EXCLUSION
+    }
+    assert reciprocal.singularities[0].location == 0
+
+
+def test_symbolic_cancellation_requires_nonzero_domain_exclusion():
+    x = sp.Symbol("x", real=True)
+    quotient = sp.Mul(
+        x,
+        sp.Pow(x, -1, evaluate=False),
+        evaluate=False,
+    )
+    expression = sp.Add(quotient, -1, evaluate=False)
+    singular_set = detect_singularities(expression, x)
+    bare_domain = ComplexDomain.real_line(x)
+    bare = ConditionalIdentity(
+        lhs=quotient,
+        rhs=sp.Integer(1),
+        assumption_context=AssumptionContext(),
+        domain=bare_domain,
+        singular_set=singular_set,
+        scope=ExactIdentityScope.SCALAR_SYMBOLIC,
+    ).symbolically_check()
+
+    assert singular_set.singularities[0].kind is SingularityKind.GENERAL_EXCLUSION
+    assert singular_set.singularities[0].location == 0
+    with pytest.raises(IdentityApplicabilityError, match="singularities"):
+        require_applicable_identity(
+            bare,
+            available_context=AssumptionContext(),
+            available_domain=bare_domain,
+        )
+
+    punctured_domain = bare_domain.with_exclusions(0)
+    punctured = ConditionalIdentity(
+        lhs=quotient,
+        rhs=sp.Integer(1),
+        assumption_context=AssumptionContext(),
+        domain=punctured_domain,
+        singular_set=singular_set,
+        scope=ExactIdentityScope.SCALAR_SYMBOLIC,
+    ).symbolically_check()
+
+    assert require_applicable_identity(
+        punctured,
+        available_context=AssumptionContext(),
+        available_domain=punctured_domain,
+    ) is punctured
+    with pytest.raises(IdentityApplicabilityError, match="point"):
+        require_applicable_identity(
+            punctured,
+            available_context=AssumptionContext(),
+            available_domain=punctured_domain,
+            point=0,
+        )
+
+
+@pytest.mark.parametrize(
+    ("lhs_builder", "rhs_builder", "variable_index"),
+    (
+        (
+            lambda z, _a, _b: sp.sqrt(z**2),
+            lambda z, _a, _b: z,
+            0,
+        ),
+        (
+            lambda _z, a, b: sp.log(a * b),
+            lambda _z, a, b: sp.log(a) + sp.log(b),
+            1,
+        ),
+    ),
+)
+def test_global_branch_identities_are_not_symbolically_accepted(
+    lhs_builder,
+    rhs_builder,
+    variable_index,
+):
+    symbols = sp.symbols("z a b")
+    variable = symbols[variable_index]
+    lhs = lhs_builder(*symbols)
+    rhs = rhs_builder(*symbols)
+    singular_set = detect_singularities(
+        sp.Add(lhs, sp.Mul(-1, rhs, evaluate=False), evaluate=False),
+        variable,
+    )
+    identity = ConditionalIdentity(
+        lhs=lhs,
+        rhs=rhs,
+        assumption_context=AssumptionContext(),
+        domain=ComplexDomain.complex_plane(variable),
+        singular_set=singular_set,
+        scope=ExactIdentityScope.SCALAR_SYMBOLIC,
+    )
+
+    with pytest.raises(IdentityVerificationIndeterminateError):
+        identity.symbolically_check()
+
+
+def test_negative_gamma_does_not_receive_positive_base_treatment():
+    gamma, lam = sp.symbols("gamma lambda", real=True)
+    context = AssumptionContext((gamma < 0,))
+    domain = ComplexDomain.real_line(lam, assumption_context=context)
+    lhs = gamma ** (sp.I * lam)
+    rhs = sp.exp(sp.I * lam * sp.log(gamma))
+    singular_set = detect_singularities(lhs - rhs, lam, assumptions=context)
+    identity = ConditionalIdentity(
+        lhs=lhs,
+        rhs=rhs,
+        assumption_context=context,
+        domain=domain,
+        singular_set=singular_set,
+        scope=ExactIdentityScope.SCALAR_SYMBOLIC,
+    )
+
+    assert singular_set.positive_base_treatment_status(
+        gamma,
+        context,
+    ) is MembershipStatus.NO
+    with pytest.raises(IdentityApplicabilityError, match="singularities"):
+        require_applicable_identity(
+            identity,
+            available_context=context,
+            available_domain=domain,
+        )
+
+
+def test_positive_gamma_identity_rejects_negative_gamma_substitution():
+    gamma, lam = sp.symbols("gamma lambda", real=True)
+    context = AssumptionContext((gamma > 0,))
+    domain = ComplexDomain.real_line(lam, assumption_context=context)
+    lhs = gamma ** (sp.I * lam)
+    rhs = sp.exp(sp.I * lam * sp.log(gamma))
+    identity = ConditionalIdentity(
+        lhs=lhs,
+        rhs=rhs,
+        assumption_context=context,
+        domain=domain,
+        singular_set=detect_singularities(
+            lhs - rhs,
+            lam,
+            assumptions=context,
+            domain=domain,
+        ),
+        scope=ExactIdentityScope.SCALAR_SYMBOLIC,
+    )
+
+    with pytest.raises(IdentityApplicabilityError, match="violates"):
+        identity.substitute({gamma: -1})
+
+
+def test_external_evidence_cannot_satisfy_internal_check_requirement():
+    x = sp.Symbol("x", real=True)
+    context = AssumptionContext()
+    domain = ComplexDomain.real_line(x)
+    identity = ConditionalIdentity(
+        lhs=sp.Integer(1),
+        rhs=sp.Integer(1),
+        assumption_context=context,
+        domain=domain,
+        singular_set=SingularSet(),
+        scope=ExactIdentityScope.SCALAR_SYMBOLIC,
+        verification_status=ConditionalVerificationStatus.EVIDENCE_SUPPLIED,
+        evidence="external source",
+    )
+
+    with pytest.raises(IdentityApplicabilityError, match="verification status"):
+        require_applicable_identity(
+            identity,
+            available_context=context,
+            available_domain=domain,
+            required_verification_status=(
+                ConditionalVerificationStatus.SYMBOLICALLY_CHECKED_UNDER_ASSUMPTIONS
+            ),
+        )
+
+
+def test_declared_identity_cannot_be_differentiated_as_verified():
+    x = sp.Symbol("x", real=True)
+    identity = ConditionalIdentity(
+        lhs=x,
+        rhs=x,
+        assumption_context=AssumptionContext(),
+        domain=ComplexDomain.real_line(x),
+        singular_set=SingularSet(),
+        scope=ExactIdentityScope.SCALAR_SYMBOLIC,
+    )
+
+    with pytest.raises(IdentityVerificationError, match="internally checked"):
+        identity.differentiate(x)
+
+
+def test_applicability_accepts_a_strictly_narrower_compatible_domain():
+    x = sp.Symbol("x", real=True)
+    context = AssumptionContext()
+    required_domain = ComplexDomain.real_line(x)
+    available_domain = required_domain.with_exclusions(0)
+    identity = ConditionalIdentity(
+        lhs=sp.Integer(1),
+        rhs=sp.Integer(1),
+        assumption_context=context,
+        domain=required_domain,
+        singular_set=SingularSet(),
+        scope=ExactIdentityScope.SCALAR_SYMBOLIC,
+    ).symbolically_check()
+
+    assert require_applicable_identity(
+        identity,
+        available_context=context,
+        available_domain=available_domain,
+    ) is identity

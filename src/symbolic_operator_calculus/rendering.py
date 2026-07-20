@@ -117,8 +117,11 @@ def render_complex_domain_latex(domain: ComplexDomain) -> str:
         elif region.condition is not None:
             regions.append(sp.latex(region.condition))
     if domain.exclusions:
-        excluded = ",".join(sp.latex(item) for item in domain.exclusions)
-        regions.append(rf"{variable}\notin\left\{{{excluded}\right\}}")
+        for exclusion in domain.exclusions:
+            if isinstance(exclusion, sp.Set):
+                regions.append(rf"{variable}\notin{sp.latex(exclusion)}")
+            else:
+                regions.append(rf"{variable}\ne{sp.latex(exclusion)}")
     regions.append(render_assumption_context_latex(domain.assumption_context))
     return r"\;\land\;".join(regions)
 
@@ -134,9 +137,14 @@ def render_singular_set_latex(singular_set: SingularSet) -> str:
     for singularity in singular_set.singularities:
         conditions = render_assumption_context_latex(singularity.conditions)
         order = "" if singularity.order is None else rf",\;m={singularity.order}"
+        location = (
+            rf"{sp.latex(singularity.variable)}\in{sp.latex(singularity.location)}"
+            if isinstance(singularity.location, sp.Set)
+            else rf"{sp.latex(singularity.variable)}={sp.latex(singularity.location)}"
+        )
         entries.append(
             rf"\text{{{' '.join(singularity.kind.value.split('_'))}}}:\;"
-            rf"{sp.latex(singularity.variable)}\in{sp.latex(singularity.location)}"
+            rf"{location}"
             rf"{order}\;[\text{{{' '.join(singularity.origin.value.split('_'))}}};\;"
             rf"{conditions}]"
         )

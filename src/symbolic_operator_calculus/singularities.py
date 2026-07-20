@@ -7,11 +7,18 @@ from enum import Enum
 from typing import final
 
 import sympy as sp
+from sympy.core.relational import (
+    GreaterThan,
+    LessThan,
+    StrictGreaterThan,
+    StrictLessThan,
+)
 
 from .domains import (
     AssumptionContext,
     ComplexDomain,
     ConsistencyStatus,
+    DomainRegionKind,
     MembershipStatus,
 )
 from .semantics import CertificationStatus
@@ -217,9 +224,65 @@ def _contains_integer_status(
             return MembershipStatus.YES
         if value.is_integer is False:
             return MembershipStatus.NO
-    if context.contains_exact(parameter > 0) and context.contains_exact(parameter < 1):
+    if _numeric_interval_excludes_integers(parameter, context):
         return MembershipStatus.NO
     return MembershipStatus.UNDETERMINED
+
+
+def _parameter_numeric_bound(
+    assumption: sp.Basic,
+    parameter: sp.Symbol,
+) -> tuple[str, sp.Expr, bool] | None:
+    if not isinstance(
+        assumption,
+        (StrictGreaterThan, GreaterThan, StrictLessThan, LessThan),
+    ):
+        return None
+    lhs, rhs = assumption.lhs, assumption.rhs
+    strict = isinstance(assumption, (StrictGreaterThan, StrictLessThan))
+    if lhs == parameter and rhs.is_number and rhs.is_real is True:
+        side = (
+            "lower"
+            if isinstance(assumption, (StrictGreaterThan, GreaterThan))
+            else "upper"
+        )
+        return side, rhs, strict
+    if rhs == parameter and lhs.is_number and lhs.is_real is True:
+        side = (
+            "upper"
+            if isinstance(assumption, (StrictGreaterThan, GreaterThan))
+            else "lower"
+        )
+        return side, lhs, strict
+    return None
+
+
+def _numeric_interval_excludes_integers(
+    parameter: sp.Symbol,
+    context: AssumptionContext,
+) -> bool:
+    """Prove only that one explicit numeric interval contains no integer."""
+
+    lower_bounds: list[tuple[sp.Expr, bool]] = []
+    upper_bounds: list[tuple[sp.Expr, bool]] = []
+    for assumption in context.assumptions:
+        parsed = _parameter_numeric_bound(assumption, parameter)
+        if parsed is None:
+            continue
+        side, value, strict = parsed
+        target = lower_bounds if side == "lower" else upper_bounds
+        target.append((value, strict))
+    for lower, lower_strict in lower_bounds:
+        first_integer = (
+            sp.floor(lower) + 1 if lower_strict else sp.ceiling(lower)
+        )
+        for upper, upper_strict in upper_bounds:
+            last_integer = (
+                sp.ceiling(upper) - 1 if upper_strict else sp.floor(upper)
+            )
+            if sp.simplify(first_integer - last_integer).is_positive is True:
+                return True
+    return False
 
 
 def _condition_status(
@@ -393,6 +456,7 @@ class SingularSet:
         for singularity in self.singularities:
             matching_avoidance = any(
                 _avoidance_matches(singularity, avoidance)
+                and avoidance.origin is SingularityOrigin.INTERNAL_RULE
                 and context.contains_all(avoidance.conditions)
                 and avoidance.conditions.consistency_status
                 is not ConsistencyStatus.INCONSISTENT
@@ -429,7 +493,11 @@ class SingularSet:
             raise TypeError("available_context must be an AssumptionContext.")
         if available_context.contains_exact(base > 0):
             return MembershipStatus.YES
-        if available_context.contains_exact(base <= 0):
+        if (
+            available_context.contains_exact(base <= 0)
+            or available_context.contains_exact(base < 0)
+            or available_context.contains_exact(sp.Eq(base, 0))
+        ):
             return MembershipStatus.NO
         return MembershipStatus.UNDETERMINED
 
@@ -460,16 +528,27 @@ def _integer_lattice() -> sp.ImageSet:
     return sp.ImageSet(sp.Lambda(integer, sp.I * integer), sp.S.Integers)
 
 
+def _shifted_integer_lattice(parameter: sp.Expr) -> sp.ImageSet:
+    integer = sp.Symbol("n", integer=True)
+    return sp.ImageSet(
+        sp.Lambda(integer, sp.I * (integer - parameter)),
+        sp.S.Integers,
+    )
+
+
 def _scaled_hyperbolic_argument(
     argument: sp.Expr,
     variable: sp.Symbol,
-) -> tuple[str, sp.Symbol | None] | None:
+) -> tuple[str, sp.Expr | None] | None:
     scaled = sp.expand(argument / sp.pi)
     if scaled == variable:
         return "direct", None
     shift = sp.expand(scaled - variable)
     parameter = sp.simplify(shift / sp.I)
-    if isinstance(parameter, sp.Symbol) and sp.expand(
+    supported_parameter = isinstance(parameter, sp.Symbol) or (
+        parameter.is_number and parameter.is_real is True
+    )
+    if supported_parameter and sp.expand(
         scaled - (variable + sp.I * parameter)
     ) == 0:
         return "imaginary_shift", parameter
@@ -482,6 +561,7 @@ def _hyperbolic_pole_records(
     order: int,
     assumptions: AssumptionContext,
     function_name: str,
+    variable_is_real: bool,
 ) -> tuple[tuple[Singularity, ...], tuple[SingularityAvoidance, ...]]:
     match = _scaled_hyperbolic_argument(argument, variable)
     if match is None:
@@ -502,6 +582,38 @@ def _hyperbolic_pole_records(
         ), ()
     if parameter is None:
         raise SingularityDetectionError("imaginary-shift rule lost its parameter.")
+    if not variable_is_real:
+        return (
+            Singularity(
+                location=_shifted_integer_lattice(parameter),
+                kind=SingularityKind.POLE,
+                variable=variable,
+                order=order,
+                origin=SingularityOrigin.INTERNAL_RULE,
+                description=(
+                    f"limited {function_name}(pi*(z+I*kappa)) rule: "
+                    "z = I*(n-kappa), n in Integers"
+                ),
+            ),
+        ), ()
+    if not isinstance(parameter, sp.Symbol):
+        if parameter.is_integer is False:
+            return (), ()
+        if parameter.is_integer is not True:
+            return (), ()
+        return (
+            Singularity(
+                location=sp.Integer(0),
+                kind=SingularityKind.POLE,
+                variable=variable,
+                order=order,
+                origin=SingularityOrigin.INTERNAL_RULE,
+                description=(
+                    f"limited {function_name}(pi*(lambda+I*kappa)) rule: "
+                    "lambda = 0 for a fixed integer kappa"
+                ),
+            ),
+        ), ()
     singularity = Singularity(
         location=sp.Integer(0),
         kind=SingularityKind.POLE,
@@ -517,18 +629,16 @@ def _hyperbolic_pole_records(
         ),
     )
     avoidances: tuple[SingularityAvoidance, ...] = ()
-    if assumptions.contains_exact(parameter > 0) and assumptions.contains_exact(
-        parameter < 1
-    ):
+    if _contains_integer_status(parameter, assumptions) is MembershipStatus.NO:
         avoidances = (
             SingularityAvoidance(
                 location=0,
                 kind=SingularityKind.POLE,
                 variable=variable,
-                conditions=AssumptionContext((parameter > 0, parameter < 1)),
+                conditions=assumptions,
                 description=(
-                    "the limited integer rule certifies no integer parameter "
-                    "strictly between 0 and 1"
+                    "the limited integer rule certifies that the declared "
+                    "parameter conditions exclude every integer"
                 ),
             ),
         )
@@ -634,11 +744,35 @@ def _branch_records(
     return tuple(singularities), tuple(avoidances)
 
 
+def _reciprocal_zero_record(
+    base: sp.Expr,
+    variable: sp.Symbol,
+) -> Singularity:
+    if isinstance(base, sp.Symbol):
+        singular_variable = base
+        location: sp.Basic = sp.Integer(0)
+    else:
+        singular_variable = variable
+        location = sp.ConditionSet(
+            variable,
+            sp.Eq(base, 0),
+            sp.S.Complexes,
+        )
+    return Singularity(
+        location=location,
+        kind=SingularityKind.GENERAL_EXCLUSION,
+        variable=singular_variable,
+        origin=SingularityOrigin.INTERNAL_RULE,
+        description="negative power requires a nonzero base",
+    )
+
+
 def detect_singularities(
     expression: sp.Expr,
     variable: sp.Symbol,
     *,
     assumptions: AssumptionContext | None = None,
+    domain: ComplexDomain | None = None,
 ) -> SingularSet:
     """Apply only the explicit P0-B rules; this is not a universal detector."""
 
@@ -649,11 +783,30 @@ def detect_singularities(
     context = AssumptionContext() if assumptions is None else assumptions
     if not isinstance(context, AssumptionContext):
         raise TypeError("assumptions must be an AssumptionContext.")
+    if domain is not None:
+        if not isinstance(domain, ComplexDomain):
+            raise TypeError("domain must be a ComplexDomain when supplied.")
+        if domain.variable != variable:
+            raise SingularityDetectionError(
+                "the supplied domain uses a different principal variable."
+            )
+    variable_is_real = variable.is_real is True or (
+        domain is not None
+        and any(
+            region.kind is DomainRegionKind.REAL_LINE
+            for region in domain.regions
+        )
+    )
     singularities: list[Singularity] = []
     avoidances: list[SingularityAvoidance] = []
     for coth_term in expression.atoms(sp.coth):
         found, avoided = _hyperbolic_pole_records(
-            coth_term.args[0], variable, 1, context, "coth"
+            coth_term.args[0],
+            variable,
+            1,
+            context,
+            "coth",
+            variable_is_real,
         )
         singularities.extend(found)
         avoidances.extend(avoided)
@@ -662,10 +815,25 @@ def detect_singularities(
         if base.func is not sp.sinh or not exponent.is_Integer or exponent >= 0:
             continue
         found, avoided = _hyperbolic_pole_records(
-            base.args[0], variable, int(-exponent), context, "1/sinh"
+            base.args[0],
+            variable,
+            int(-exponent),
+            context,
+            "1/sinh",
+            variable_is_real,
         )
         singularities.extend(found)
         avoidances.extend(avoided)
+    for power in expression.atoms(sp.Pow):
+        base, exponent = power.as_base_exp()
+        if not exponent.is_Integer or exponent >= 0 or base.is_number:
+            continue
+        if (
+            base.func is sp.sinh
+            and _scaled_hyperbolic_argument(base.args[0], variable) is not None
+        ):
+            continue
+        singularities.append(_reciprocal_zero_record(base, variable))
     branch_singularities, branch_avoidances = _branch_records(
         expression, variable, context
     )

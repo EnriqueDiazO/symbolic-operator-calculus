@@ -80,14 +80,15 @@ def _expression_with_both_sides(lhs: sp.Expr, rhs: sp.Expr) -> sp.Expr:
 def _missing_detected_singularities(
     lhs: sp.Expr,
     rhs: sp.Expr,
-    variable: sp.Symbol,
+    domain: ComplexDomain,
     assumptions: AssumptionContext,
     supplied: SingularSet,
 ) -> tuple[object, ...]:
     detected = detect_singularities(
         _expression_with_both_sides(lhs, rhs),
-        variable,
+        domain.variable,
         assumptions=assumptions,
+        domain=domain,
     )
     supplied_keys = {
         (
@@ -199,7 +200,7 @@ class ConditionalIdentity:
         missing = _missing_detected_singularities(
             lhs,
             rhs,
-            self.domain.variable,
+            self.domain,
             self.assumption_context,
             self.singular_set,
         )
@@ -301,12 +302,28 @@ class ConditionalIdentity:
             raise IdentityScopeError(
                 "differentiation is supported only in the principal domain variable."
             )
+        if (
+            self.verification_status
+            is not ConditionalVerificationStatus.SYMBOLICALLY_CHECKED_UNDER_ASSUMPTIONS
+        ):
+            raise IdentityVerificationError(
+                "differentiation requires an internally checked scalar identity."
+            )
+        require_applicable_identity(
+            self,
+            available_context=self.assumption_context,
+            available_domain=self.domain,
+            required_verification_status=(
+                ConditionalVerificationStatus.SYMBOLICALLY_CHECKED_UNDER_ASSUMPTIONS
+            ),
+        )
         lhs = sp.diff(self.lhs, variable)
         rhs = sp.diff(self.rhs, variable)
         detected = detect_singularities(
             _expression_with_both_sides(lhs, rhs),
             variable,
             assumptions=self.assumption_context,
+            domain=self.domain,
         )
         result = ConditionalIdentity(
             lhs=lhs,
@@ -352,6 +369,7 @@ class ConditionalIdentity:
             _expression_with_both_sides(lhs, rhs),
             domain.variable,
             assumptions=context,
+            domain=domain,
         )
         return ConditionalIdentity(
             lhs=lhs,
@@ -391,7 +409,9 @@ def require_applicable_identity(
     available_domain: ComplexDomain,
     point: object | None = None,
     required_scope: ExactIdentityScope = ExactIdentityScope.SCALAR_SYMBOLIC,
-    require_decided_consistency: bool = True,
+    required_verification_status: ConditionalVerificationStatus = (
+        ConditionalVerificationStatus.DECLARED
+    ),
 ) -> ConditionalIdentity:
     """Return an identity only after every declared applicability check passes."""
 
@@ -403,9 +423,24 @@ def require_applicable_identity(
         raise TypeError("available_domain must be a ComplexDomain.")
     if not isinstance(required_scope, ExactIdentityScope):
         raise TypeError("required_scope must be an ExactIdentityScope.")
+    if not isinstance(
+        required_verification_status,
+        ConditionalVerificationStatus,
+    ):
+        raise TypeError(
+            "required_verification_status must be a "
+            "ConditionalVerificationStatus."
+        )
     if required_scope is not ExactIdentityScope.SCALAR_SYMBOLIC:
         raise IdentityScopeError(
             "a scalar ConditionalIdentity cannot satisfy a stronger or different scope."
+        )
+    if (
+        required_verification_status is not ConditionalVerificationStatus.DECLARED
+        and identity.verification_status is not required_verification_status
+    ):
+        raise IdentityApplicabilityError(
+            "the identity does not have the required verification status."
         )
     context = available_domain.assumption_context.combine(available_context)
     if not context.contains_all(identity.assumption_context):
@@ -414,10 +449,7 @@ def require_applicable_identity(
         )
     if context.consistency_status is ConsistencyStatus.INCONSISTENT:
         raise IdentityApplicabilityError("the available context is inconsistent.")
-    if (
-        require_decided_consistency
-        and context.consistency_status is ConsistencyStatus.UNDETERMINED
-    ):
+    if context.consistency_status is ConsistencyStatus.UNDETERMINED:
         raise IdentityApplicabilityError(
             "the available context has undetermined consistency."
         )
@@ -479,6 +511,7 @@ def _checked_identity(
         _expression_with_both_sides(lhs, rhs),
         domain.variable,
         assumptions=context,
+        domain=domain,
     )
     return ConditionalIdentity(
         lhs=lhs,

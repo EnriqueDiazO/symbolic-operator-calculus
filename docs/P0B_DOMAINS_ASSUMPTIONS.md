@@ -8,7 +8,8 @@ theorem prover and do not establish analytic or operatorial properties.
 
 `AssumptionContext` is an immutable, hashable, presentation-ordered collection
 of explicit SymPy Boolean propositions.  Exact structural duplicates are
-removed, but no hypothesis is discarded because it appears redundant.
+removed, and literal `True` is discarded because it adds no hypothesis. No
+other hypothesis is discarded because it appears redundant.
 
 Its consistency status has deliberately narrow meaning:
 
@@ -58,10 +59,21 @@ only for:
   `lambda = 0` and integer `kappa`;
 - principal-branch sensitivity of logarithms and noninteger powers.
 
-For `0 < kappa < 1`, the absence of an integer `kappa` is stored as a limited
-conditioned avoidance rule. The underlying conditional pole record remains;
-it is not erased. At `kappa = 0` or `kappa = 1`, `lambda = 0` is reported as
-singular. No numerical sampling is used to declare a pole or branch absent.
+For an explicit numeric interval containing no integer, including
+`0 < kappa < 1` and `-1 < kappa < 0`, the absence of an integer `kappa` is
+stored as a limited conditioned avoidance rule. The underlying conditional
+pole record remains; it is not erased. At integer values such as `kappa = -1`,
+`kappa = 0`, or `kappa = 1`, `lambda = 0` is reported as singular. No numerical
+sampling is used to declare a pole or branch absent. If the shifted principal
+variable is not explicitly real, the detector retains the full shifted
+integer lattice instead of applying the real-line specialization. A supplied
+`ComplexDomain.real_line` is also explicit real-variable information, even
+when the underlying SymPy symbol has no `real=True` property.
+
+Negative powers also receive a conservative general exclusion at zeros of
+their base when no more specific supported pole rule applies. This prevents a
+symbolic cancellation such as `x/x` from erasing the required condition
+`x != 0`; it does not classify arbitrary zeros or their orders.
 
 For `gamma**(I*lambda)`, a positive-real-base treatment is available only when
 the explicit context contains `gamma > 0`. A SymPy symbol property by itself
@@ -94,14 +106,18 @@ available context contains every required hypothesis, consistency is decided,
 the available domain is provably no broader than the declared domain, and the
 stored singularities are provably avoided. A missing condition, a broader or
 unrelated domain, a singular point, or an undetermined check causes an
-explicit exception.
+explicit exception. Callers can additionally request a concrete verification
+status; external evidence does not satisfy a request for an internal symbolic
+check.
 
 Substitution updates expressions, assumptions, domain, and singularities;
 values such as `kappa = 0` are rejected because they violate the stored open
-interval. Scalar differentiation preserves the domain and assumptions and
-unions newly detected singularities with the old set. Combining identities
-unions contexts, intersects domains, unions singular sets, retains evidence as
-separate records, and never strengthens verification status.
+interval. Scalar differentiation is available only after the original scalar
+identity has passed the internal check and is applicable on its declared
+domain; it preserves the domain and assumptions and unions newly detected
+singularities with the old set. Combining identities unions contexts,
+intersects domains, unions singular sets, retains evidence as separate
+records, and never strengthens verification status.
 
 Calling `.as_expr()` is a deliberate one-way projection to a SymPy equality.
 The result has lost the semantic metadata and no API reconstructs a stronger

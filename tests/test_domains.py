@@ -10,12 +10,14 @@ from symbolic_operator_calculus import (
     ConsistencyStatus,
     DomainRegionKind,
     MembershipStatus,
+    render_complex_domain_latex,
 )
 from symbolic_operator_calculus.domains import (
     DomainSubstitutionError,
     DomainVariableMismatchError,
     IncompatibleDomainError,
     InvalidAssumptionError,
+    InvalidDomainError,
 )
 
 
@@ -144,7 +146,7 @@ def test_substitution_rechecks_hypotheses_instead_of_dropping_them():
 
     substituted = context.substitute({kappa: 0})
 
-    assert substituted.assumptions == (sp.false, sp.true)
+    assert substituted.assumptions == (sp.false,)
     assert substituted.consistency_status is ConsistencyStatus.INCONSISTENT
 
 
@@ -182,6 +184,21 @@ def test_vertical_and_horizontal_strip_construction_is_explicit():
         beta > -sp.pi,
         beta < sp.pi,
     )
+
+
+@pytest.mark.parametrize("invalid_bound", (sp.I, sp.nan, sp.zoo))
+def test_strip_rejects_nonreal_or_undefined_bounds(invalid_bound):
+    z = sp.Symbol("z")
+
+    with pytest.raises(InvalidDomainError, match="extended-real"):
+        ComplexDomain.vertical_strip(z, invalid_bound, 1)
+
+
+def test_strip_accepts_infinite_extended_real_endpoints():
+    z = sp.Symbol("z")
+
+    whole_plane_coordinates = ComplexDomain.horizontal_strip(z, -sp.oo, sp.oo)
+    assert whole_plane_coordinates.contains_point(1 + sp.I) is MembershipStatus.YES
 
 
 def test_domain_intersection_preserves_assumptions_exclusions_and_evidence():
@@ -312,3 +329,87 @@ def test_domain_hash_and_string_representation_are_deterministic():
         "ComplexDomain(variable=z; region=real_line; assumptions=2; "
         "exclusions=none)"
     )
+
+
+def test_literal_true_adds_no_assumption_information():
+    x = sp.Symbol("x")
+
+    context = AssumptionContext((sp.true, x > 0, sp.true))
+
+    assert context.assumptions == (x > 0,)
+    assert AssumptionContext((sp.true,)).is_empty
+
+
+@pytest.mark.parametrize(
+    "assumptions",
+    (
+        lambda x, y, z: (x > y, y > z, z > x),
+        lambda x, _y, _z: (x**2 > 1,),
+        lambda x, _y, _z: (sp.sin(x) > 0,),
+    ),
+)
+def test_nonlinear_transcendental_and_cyclic_contexts_are_undetermined(
+    assumptions,
+):
+    x, y, z = sp.symbols("x y z")
+
+    context = AssumptionContext(assumptions(x, y, z))
+
+    assert context.consistency_status is ConsistencyStatus.UNDETERMINED
+
+
+def test_homonymous_symbols_with_distinct_assumptions_are_not_merged():
+    plain = sp.Symbol("u")
+    real = sp.Symbol("u", real=True)
+
+    context = AssumptionContext((plain > 0, real < 0))
+
+    assert plain != real
+    assert len(context.assumptions) == 2
+    assert context.consistency_status is ConsistencyStatus.CONSISTENT
+
+
+@pytest.mark.parametrize("special", (sp.nan, sp.zoo, sp.oo, -sp.oo))
+def test_nonfinite_special_values_are_not_complex_domain_points(special):
+    z = sp.Symbol("z")
+
+    assert (
+        ComplexDomain.complex_plane(z).contains_point(special)
+        is MembershipStatus.NO
+    )
+    assert ComplexDomain.real_line(z).contains_point(special) is MembershipStatus.NO
+
+
+@pytest.mark.parametrize("special", (sp.nan, sp.zoo, sp.oo, sp.I))
+def test_special_numeric_assumptions_are_not_unsafely_certified(special):
+    x = sp.Symbol("x")
+    proposition = sp.Eq(x, special, evaluate=False)
+
+    assert (
+        AssumptionContext((proposition,)).consistency_status
+        is ConsistencyStatus.UNDETERMINED
+    )
+
+
+def test_strictly_narrower_compatible_domain_has_correct_inclusion_direction():
+    z = sp.Symbol("z")
+    required = ComplexDomain.real_line(z)
+    available = required.with_exclusions(0)
+
+    assert available.is_subset_of(required) is MembershipStatus.YES
+    assert required.is_subset_of(available) is MembershipStatus.NO
+    assert available.intersect(required).exclusions == (0,)
+
+
+def test_domain_latex_distinguishes_excluded_points_from_excluded_sets():
+    z = sp.Symbol("z")
+    domain = ComplexDomain.complex_plane(z).with_exclusions(
+        0,
+        sp.Interval(-sp.oo, -1),
+    )
+
+    latex = render_complex_domain_latex(domain)
+
+    assert r"z\ne0" in latex
+    assert r"z\notin\left(-\infty, -1\right]" in latex
+    assert r"z\notin\left\{0," not in latex
