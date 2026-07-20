@@ -174,7 +174,7 @@ def render_relative_wiener_hopf_trace_latex(
             rf"\mathcal W_{{{k},{j}}}=W\!\left(b_{{{k},{j}}}^{{\mathrm R}}\right)V_{{\beta_{{{k},{j}}}}}",
         ),
         RenderedDerivationStep(
-            "exact_identity", "Exact identity",
+            "exact_identity", "Exact identity within validated model",
             rf"\mathcal W_{{{k},{j}}}=V_{{\beta_{{{k},{j}}}}}W\!\left(b_{{{k},{j}}}^{{\mathrm L}}\right)"
             rf"=W\!\left(b_{{{k},{j}}}^{{\mathrm R}}\right)V_{{\beta_{{{k},{j}}}}}",
         ),
@@ -254,10 +254,23 @@ def render_linear_combination_latex(combination: LinearCombination) -> str:
 def render_scalar_latex(
     expression: sp.Expr | KernelAnnotatedExpression,
 ) -> str:
-    """Render a scalar SymPy expression with controlled known names."""
+    """Render a scalar expression and expose retained kernel semantics."""
 
     if isinstance(expression, KernelAnnotatedExpression):
-        expression = expression.expression
+        scalar = _StructuredScalarLatexPrinter().doprint(expression.expression)
+        status_text = ", ".join(
+            " ".join(status.value.split("_"))
+            for status in expression.semantic_statuses
+        )
+        evidence_count = sum(
+            evidence is not None for evidence in expression.evidences
+        )
+        return (
+            rf"\underbrace{{{scalar}}}_{{\substack{{"
+            rf"\text{{kernel status: {status_text}}} \\ "
+            rf"\text{{caller hypotheses: {len(expression.hypotheses)}; "
+            rf"evidence objects: {evidence_count}}}}}}}"
+        )
     if not isinstance(expression, sp.Expr):
         raise TypeError("expression must be a SymPy expression.")
     return _StructuredScalarLatexPrinter().doprint(expression)
@@ -349,7 +362,11 @@ def _render_exact_definition_step(
         rf"{render_operator_atom_latex(reduction.regularizer.operator)}\,"
         rf"{_render_exact_block_latex(reduction.right)}."
     )
-    return RenderedDerivationStep("exact_definition", "Exact definition", latex)
+    return RenderedDerivationStep(
+        "exact_definition",
+        "Formal algebraic definition",
+        latex,
+    )
 
 
 def _render_offdiagonal_models_step(
@@ -481,7 +498,11 @@ def _render_combined_kernel_step(
         rf"\,d{middle}\Biggr\}}\,d{outer}."
         r"\end{aligned}"
     )
-    return RenderedDerivationStep("combined_kernel", "Combined kernel", latex)
+    return RenderedDerivationStep(
+        "combined_kernel",
+        f"Combined kernel ({_kernel_semantic_summary(trace.combined_kernel)})",
+        latex,
+    )
 
 
 def _render_compact_action_step(
@@ -511,8 +532,18 @@ def _render_compact_action_step(
     )
     return RenderedDerivationStep(
         "compact_model_action",
-        "Compact model action",
+        "Compact model action declaration "
+        f"({_kernel_semantic_summary(trace.compact_action.correction)})",
         latex,
+    )
+
+
+def _kernel_semantic_summary(expression: KernelAnnotatedExpression) -> str:
+    statuses = ", ".join(status.value for status in expression.semantic_statuses)
+    evidence_count = sum(evidence is not None for evidence in expression.evidences)
+    return (
+        f"kernel status: {statuses}; caller hypotheses: {len(expression.hypotheses)}; "
+        f"evidence objects: {evidence_count}"
     )
 
 

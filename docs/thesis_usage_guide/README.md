@@ -170,9 +170,10 @@ fabricado.
   `KernelRepresentation` aportada explicitamente y conserva su estatus e
   hipotesis. La integral resultante no prueba convergencia ni existencia del
   operador.
-- La equivalencia módulo compactos es metadato matemático validado, no una
+- La equivalencia módulo compactos es una declaración matemática tipada, no una
   decisión automática de compacidad; sin evidencia queda marcada como no
-  certificada y no es intercambiable con `ExactIdentity`.
+  certificada y, con evidencia, solo como `EVIDENCE_SUPPLIED`. No es
+  intercambiable con `ExactIdentity`.
 - La construccion de Schur sigue siendo formal si no se aportan certificados
   analiticos; el paquete no demuestra compacidad, Fredholmness o acotacion.
 - No hay reducción general para $m>2$, inversión real de operadores ni

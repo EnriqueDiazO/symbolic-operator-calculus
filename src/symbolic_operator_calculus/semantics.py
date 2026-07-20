@@ -19,15 +19,24 @@ class CertificationStatus(str, Enum):
     """Whether externally supplied evidence accompanies a semantic claim."""
 
     UNCERTIFIED = "uncertified"
-    CERTIFIED = "certified"
+    EVIDENCE_SUPPLIED = "evidence_supplied"
+
+
+class ExactIdentityScope(str, Enum):
+    """Scope in which a caller explicitly claims that an identity is exact."""
+
+    STRUCTURAL = "structural"
+    SCALAR_SYMBOLIC = "scalar_symbolic"
+    WITHIN_MODEL = "within_model"
+    OPERATORIAL = "operatorial"
 
 
 class KernelRepresentationStatus(str, Enum):
-    """Semantic strength explicitly assigned to a kernel representation."""
+    """Caller-assigned semantic strength of a kernel representation."""
 
     FORMAL = "formal"
     ASSUMED = "assumed"
-    CERTIFIED = "certified"
+    EXTERNALLY_CERTIFIED = "externally_certified"
 
 
 class ExactIdentityRequiredError(TypeError):
@@ -41,15 +50,30 @@ class KernelRepresentationRequiredError(ValueError):
 @final
 @dataclass(frozen=True)
 class ExactIdentity:
-    """An explicitly exact identity backed by caller-supplied evidence."""
+    """An exactness claim with explicit scope and caller-supplied evidence.
+
+    Construction records the claim; it does not verify that the evidence is a
+    proof or promote a model identity to an operatorial theorem.
+    """
 
     left: object
     right: object
     evidence: object
+    scope: ExactIdentityScope
+    hypotheses: tuple[object, ...] = ()
 
     def __post_init__(self) -> None:
         if self.evidence is None:
             raise ValueError("ExactIdentity requires explicit evidence.")
+        if not isinstance(self.scope, ExactIdentityScope):
+            raise TypeError("scope must be an ExactIdentityScope.")
+        if isinstance(self.hypotheses, (str, bytes)):
+            raise TypeError("hypotheses must be an iterable of hypothesis objects.")
+        try:
+            hypotheses = tuple(self.hypotheses)
+        except TypeError as exc:
+            raise TypeError("hypotheses must be an iterable.") from exc
+        object.__setattr__(self, "hypotheses", hypotheses)
 
 
 @final
@@ -81,7 +105,7 @@ class ModCompactEquivalence:
 
     def __post_init__(self) -> None:
         status = (
-            CertificationStatus.CERTIFIED
+            CertificationStatus.EVIDENCE_SUPPLIED
             if self.evidence is not None
             else CertificationStatus.UNCERTIFIED
         )
@@ -189,17 +213,21 @@ class KernelRepresentation:
             raise TypeError("integration_domain must be an IntegrationDomain.")
         if not isinstance(self.semantic_status, KernelRepresentationStatus):
             raise TypeError("semantic_status must be a KernelRepresentationStatus.")
+        if isinstance(self.hypotheses, (str, bytes)):
+            raise TypeError("hypotheses must be an iterable of hypothesis objects.")
         try:
             hypotheses = tuple(self.hypotheses)
         except TypeError as exc:
             raise TypeError("hypotheses must be an iterable.") from exc
         object.__setattr__(self, "hypotheses", hypotheses)
         if (
-            self.semantic_status is KernelRepresentationStatus.CERTIFIED
+            self.semantic_status
+            is KernelRepresentationStatus.EXTERNALLY_CERTIFIED
             and self.evidence is None
         ):
             raise ValueError(
-                "A certified KernelRepresentation requires externally supplied evidence."
+                "An externally certified KernelRepresentation requires caller-supplied "
+                "evidence; the program does not verify that evidence."
             )
 
     def instantiate(
@@ -264,6 +292,24 @@ class KernelAnnotatedExpression:
             for representation in self.kernel_representations
         )
 
+    @property
+    def evidences(self) -> tuple[object | None, ...]:
+        """Return evidence objects without interpreting them as verified proofs."""
+
+        return tuple(
+            representation.evidence
+            for representation in self.kernel_representations
+        )
+
+    @property
+    def represented_operators(self) -> tuple[RegularizerOperator, ...]:
+        """Return the regularizer associated with each retained representation."""
+
+        return tuple(
+            representation.operator
+            for representation in self.kernel_representations
+        )
+
     def as_expr(self) -> sp.Expr:
         """Explicitly project to the underlying SymPy expression."""
 
@@ -282,14 +328,6 @@ class KernelAnnotatedExpression:
         if not isinstance(self.expression, sp.Integral):
             raise AttributeError("variables is available only for an Integral expression.")
         return self.expression.variables
-
-    @property
-    def function(self) -> sp.Expr:
-        """Expose an Integral integrand without dropping the wrapper itself."""
-
-        if not isinstance(self.expression, sp.Integral):
-            raise AttributeError("function is available only for an Integral expression.")
-        return self.expression.function
 
     def atoms(self, *types: type[sp.Basic]) -> set[sp.Basic]:
         """Delegate SymPy atom inspection while retaining semantic metadata."""

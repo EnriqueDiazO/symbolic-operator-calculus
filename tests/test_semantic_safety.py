@@ -11,16 +11,23 @@ from symbolic_operator_calculus import (
     ExactBlock,
     ExactIdentity,
     ExactIdentityRequiredError,
+    ExactIdentityScope,
     FormalIdentity,
+    FormalRegularizerAction,
     G1,
     G2,
+    IntegrationDomain,
     KernelAnnotatedExpression,
+    KernelRepresentation,
     KernelRepresentationRequiredError,
     KernelRepresentationStatus,
+    LinearCombination,
     ModCompactEquivalence,
     ModCompactRelation,
+    Product,
     R11,
     RegularizerOperator,
+    Term,
     Vtilde_alpha1,
     Vtilde_alpha2,
     Wminus_21,
@@ -33,16 +40,46 @@ from symbolic_operator_calculus import (
     apply_a22_first_schur_model_compact,
     apply_atom,
     apply_combined_kernel_c22,
+    apply_linear_combination,
+    apply_product,
     build_first_schur_derivation_trace,
     c22_integrand,
     combined_kernel_c22,
+    extract_integral_kernel,
     mvp_atomic_rules,
+    render_scalar_latex,
     require_exact_identity,
 )
 
 
+def kernel_representation(
+    *,
+    operator=None,
+    status=KernelRepresentationStatus.FORMAL,
+    hypotheses=("caller hypothesis",),
+    evidence=None,
+    name="K",
+):
+    output, input_ = sp.symbols(f"_{name}_output _{name}_input")
+    return KernelRepresentation(
+        operator=a11_formal_regularizer() if operator is None else operator,
+        kernel_expression=sp.Function(name)(output, input_),
+        output_variable=output,
+        input_variable=input_,
+        integration_domain=IntegrationDomain(0, sp.oo, "positive half-line"),
+        semantic_status=status,
+        hypotheses=hypotheses,
+        evidence=evidence,
+    )
+
+
 def test_semantic_relation_types_are_disjoint_and_immutable():
-    exact = ExactIdentity("A", "B", evidence="symbolic derivation")
+    exact = ExactIdentity(
+        "A",
+        "B",
+        evidence="symbolic derivation",
+        scope=ExactIdentityScope.STRUCTURAL,
+    )
     formal = FormalIdentity("A", "B", justification="formal substitution")
     modulo_compact = ModCompactEquivalence("A", "B")
     approximate = ApproximateEquality(
@@ -68,8 +105,52 @@ def test_exact_consumer_rejects_modulo_compact_equivalence():
     with pytest.raises(ExactIdentityRequiredError):
         require_exact_identity(relation)
     assert require_exact_identity(
-        ExactIdentity("A", "B", evidence="symbolic derivation")
+        ExactIdentity(
+            "A",
+            "B",
+            evidence="symbolic derivation",
+            scope=ExactIdentityScope.STRUCTURAL,
+        )
     ).right == "B"
+
+
+@pytest.mark.parametrize(
+    "non_exact",
+    (
+        FormalIdentity("A", "B"),
+        ModCompactEquivalence("A", "B"),
+        ApproximateEquality("A", "B", 1, "real norm", "A-B"),
+        True,
+        {"left": "A", "right": "B", "evidence": "looks exact"},
+    ),
+)
+def test_exact_consumer_rejects_every_non_exact_and_duck_typed_value(non_exact):
+    with pytest.raises(ExactIdentityRequiredError):
+        require_exact_identity(non_exact)
+
+
+def test_exact_identity_requires_explicit_scope_and_retains_hypotheses():
+    with pytest.raises(TypeError):
+        ExactIdentity("A", "B", evidence="derivation", scope="structural")
+
+    identity = ExactIdentity(
+        "A",
+        "B",
+        evidence="derivation",
+        scope=ExactIdentityScope.SCALAR_SYMBOLIC,
+        hypotheses=("x is real",),
+    )
+
+    assert identity.scope is ExactIdentityScope.SCALAR_SYMBOLIC
+    assert identity.hypotheses == ("x is real",)
+    with pytest.raises(TypeError):
+        ExactIdentity(
+            "A",
+            "B",
+            evidence="derivation",
+            scope=ExactIdentityScope.STRUCTURAL,
+            hypotheses="one hypothesis, not characters",
+        )
 
 
 def test_approximate_equality_requires_tolerance_norm_and_residual():
@@ -79,6 +160,19 @@ def test_approximate_equality_requires_tolerance_norm_and_residual():
         ApproximateEquality("A", "B", 1, None, "residual")
     with pytest.raises(ValueError):
         ApproximateEquality("A", "B", 1, "norm", None)
+
+
+@pytest.mark.parametrize("tolerance", (-1, sp.nan, sp.oo, -sp.oo, sp.I))
+def test_approximate_equality_rejects_invalid_or_criterion_incompatible_tolerance(
+    tolerance,
+):
+    with pytest.raises(ValueError):
+        ApproximateEquality("A", "B", tolerance, "real-valued norm", "A-B")
+
+
+def test_approximate_equality_rejects_boolean_tolerance():
+    with pytest.raises(TypeError):
+        ApproximateEquality("A", "B", True, "real-valued norm", "A-B")
 
 
 def test_regularizer_without_kernel_representation_cannot_generate_integral():
@@ -93,6 +187,30 @@ def test_regularizer_without_kernel_representation_cannot_generate_integral():
     with pytest.raises(KernelRepresentationRequiredError, match="regularizer is formal"):
         apply_atom(
             R11,
+            f(x),
+            x,
+            mvp_atomic_rules(),
+            integration_variable=y,
+        )
+
+
+def test_indirect_product_and_linear_combination_cannot_materialize_r11():
+    x, y = sp.symbols("x y")
+    f = sp.Function("f")
+    product = Product((R11,))
+    combination = LinearCombination((Term(1, product),))
+
+    with pytest.raises(KernelRepresentationRequiredError):
+        apply_product(
+            product,
+            f(x),
+            x,
+            mvp_atomic_rules(),
+            integration_variable=y,
+        )
+    with pytest.raises(KernelRepresentationRequiredError):
+        apply_linear_combination(
+            combination,
             f(x),
             x,
             mvp_atomic_rules(),
@@ -153,6 +271,160 @@ def test_explicit_kernel_representation_allows_annotated_integral():
     assert result.hypotheses == representation.hypotheses
 
 
+@pytest.mark.parametrize(
+    "unsafe_builder",
+    (
+        lambda wrong, x, y, u, v, f: c22_integrand(
+            x, u, v, y, regularizer_kernel=wrong
+        ),
+        lambda wrong, x, y, u, v, f: combined_kernel_c22(
+            x, y, regularizer_kernel=wrong
+        ),
+        lambda wrong, x, y, u, v, f: apply_combined_kernel_c22(
+            x, f, y, regularizer_kernel=wrong
+        ),
+        lambda wrong, x, y, u, v, f: apply_a22_first_schur_model_compact(
+            f(x), x, regularizer_kernel=wrong
+        ),
+        lambda wrong, x, y, u, v, f: build_first_schur_derivation_trace(
+            f(x),
+            x,
+            input_variable=y,
+            outer_variable=u,
+            middle_variable=v,
+            regularizer_kernel=wrong,
+        ),
+    ),
+)
+def test_representation_for_another_regularizer_is_rejected_everywhere(
+    unsafe_builder,
+):
+    x, y, u, v = sp.symbols("x y u v")
+    f = sp.Function("f")
+    other_regularizer = RegularizerOperator("other target", "other regularizer")
+    wrong = kernel_representation(operator=other_regularizer, name="K_other")
+
+    with pytest.raises(ValueError, match="represent this regularizer"):
+        FormalRegularizerAction(a11_formal_regularizer(), wrong)
+    with pytest.raises(ValueError, match="A11 regularizer"):
+        unsafe_builder(wrong, x, y, u, v, f)
+
+
+def test_externally_certified_representation_requires_evidence():
+    with pytest.raises(ValueError, match="does not verify"):
+        kernel_representation(
+            status=KernelRepresentationStatus.EXTERNALLY_CERTIFIED,
+            evidence=None,
+            name="K_external",
+        )
+    with pytest.raises(TypeError, match="hypothesis objects"):
+        kernel_representation(
+            hypotheses="one hypothesis, not characters",
+            name="K_bad_hypotheses",
+        )
+
+
+def test_composition_retains_mixed_statuses_hypotheses_evidence_and_operator():
+    x, y, u = sp.symbols("x y u")
+    f = sp.Function("f")
+    regularizer = a11_formal_regularizer()
+    formal = kernel_representation(
+        status=KernelRepresentationStatus.FORMAL,
+        hypotheses=("formal hypothesis",),
+        name="K_formal",
+    )
+    assumed = kernel_representation(
+        status=KernelRepresentationStatus.ASSUMED,
+        hypotheses=("assumed hypothesis",),
+        evidence="external assumption record",
+        name="K_assumed",
+    )
+
+    first = FormalRegularizerAction(regularizer, formal).apply(
+        f(x), x, integration_variable=y
+    )
+    composed = FormalRegularizerAction(regularizer, assumed).apply(
+        first, x, integration_variable=u
+    )
+
+    assert composed.kernel_representations == (formal, assumed)
+    assert composed.semantic_statuses == (
+        KernelRepresentationStatus.FORMAL,
+        KernelRepresentationStatus.ASSUMED,
+    )
+    assert composed.hypotheses == ("formal hypothesis", "assumed hypothesis")
+    assert composed.evidences == (None, "external assumption record")
+    assert composed.represented_operators == (regularizer, regularizer)
+    assert "FORMAL" in repr(composed) and "external assumption record" in repr(
+        composed
+    )
+    assert isinstance(hash(composed), int)
+    assert not hasattr(composed, "doit")
+    assert not hasattr(composed, "simplify")
+
+
+def test_kernel_extraction_retains_annotations_instead_of_silently_unwrapping():
+    x, y = sp.symbols("x y")
+    f = sp.Function("f")
+    representation = kernel_representation(name="K_extract")
+    applied = FormalRegularizerAction(
+        a11_formal_regularizer(), representation
+    ).apply(f(x), x, integration_variable=y)
+
+    extracted = extract_integral_kernel(applied, x, f, y)
+
+    assert isinstance(extracted, KernelAnnotatedExpression)
+    assert extracted.expression == sp.Function("K_extract")(x, y)
+    assert extracted.kernel_representations == (representation,)
+    assert extracted.hypotheses == representation.hypotheses
+
+
+def test_explicit_sympy_projection_does_not_recover_semantic_status_automatically():
+    x, y = sp.symbols("x y")
+    f = sp.Function("f")
+    representation = kernel_representation(name="K_projection")
+    annotated = FormalRegularizerAction(
+        a11_formal_regularizer(), representation
+    ).apply(f(x), x, integration_variable=y)
+
+    projected = annotated.as_expr()
+    simplified = sp.simplify(projected)
+
+    assert isinstance(projected, sp.Expr)
+    assert not isinstance(projected, KernelAnnotatedExpression)
+    assert not hasattr(projected, "semantic_statuses")
+    assert not hasattr(simplified, "semantic_statuses")
+    with pytest.raises(AttributeError):
+        _ = annotated.function
+
+
+def test_rendering_makes_caller_status_and_evidence_visible():
+    x, y = sp.symbols("x y")
+    f = sp.Function("f")
+    formal = kernel_representation(name="K_render")
+    external = kernel_representation(
+        status=KernelRepresentationStatus.EXTERNALLY_CERTIFIED,
+        evidence="external certificate",
+        name="K_render",
+    )
+    formal_expression = FormalRegularizerAction(
+        a11_formal_regularizer(), formal
+    ).apply(f(x), x, integration_variable=y)
+    external_expression = FormalRegularizerAction(
+        a11_formal_regularizer(), external
+    ).apply(f(x), x, integration_variable=y)
+
+    formal_latex = render_scalar_latex(formal_expression)
+    external_latex = render_scalar_latex(external_expression)
+
+    assert formal_latex != external_latex
+    assert formal_expression != external_expression
+    assert "kernel status: formal" in formal_latex
+    assert "evidence objects: 0" in formal_latex
+    assert "kernel status: externally certified" in external_latex
+    assert "evidence objects: 1" in external_latex
+
+
 def test_explicit_schur_kernel_preserves_status_and_hypotheses():
     x, y, u, v = sp.symbols("x y u v")
     representation = explicit_r11_kernel_representation()
@@ -211,7 +483,7 @@ def test_modulo_compact_evidence_is_stored_but_not_invented():
     evidence = {"source": "externally supplied theorem"}
     relation = ModCompactEquivalence("A", "B", evidence=evidence)
 
-    assert relation.certification_status is CertificationStatus.CERTIFIED
+    assert relation.certification_status is CertificationStatus.EVIDENCE_SUPPLIED
     assert relation.evidence is evidence
 
 

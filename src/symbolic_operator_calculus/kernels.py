@@ -9,6 +9,7 @@ import sympy as sp
 
 from .actions import (
     AppliedLinearCombination,
+    AppliedTerm,
     AtomicAction,
     apply_atom,
     apply_linear_combination_ordered,
@@ -46,6 +47,20 @@ class KernelTerm:
     product: Product
     kernel: sp.Expr
     ordered_factors: tuple[sp.Expr, ...] | None = None
+    kernel_representations: tuple[KernelRepresentation, ...] = ()
+
+    def __post_init__(self) -> None:
+        try:
+            representations = tuple(self.kernel_representations)
+        except TypeError as exc:
+            raise TypeError("kernel_representations must be an iterable.") from exc
+        if not all(
+            isinstance(item, KernelRepresentation) for item in representations
+        ):
+            raise TypeError(
+                "kernel_representations must contain KernelRepresentation objects."
+            )
+        object.__setattr__(self, "kernel_representations", representations)
 
     def as_expr(self) -> sp.Expr:
         """Project this ordered kernel term to a signed SymPy expression."""
@@ -63,6 +78,24 @@ class KernelCombination:
         """Project the ordered kernels to their final SymPy sum."""
 
         return sum((term.as_expr() for term in self.terms), sp.Integer(0))
+
+    @property
+    def kernel_representations(self) -> tuple[KernelRepresentation, ...]:
+        """Return all representations retained by the extracted terms."""
+
+        return tuple(
+            representation
+            for term in self.terms
+            for representation in term.kernel_representations
+        )
+
+    def as_result(self) -> sp.Expr | KernelAnnotatedExpression:
+        """Project while retaining annotations when extracted kernels have them."""
+
+        expression = self.as_expr()
+        if not self.kernel_representations:
+            return expression
+        return KernelAnnotatedExpression(expression, self.kernel_representations)
 
 
 @dataclass(frozen=True)
@@ -162,7 +195,7 @@ def extract_integral_kernel(
     output_variable: sp.Symbol,
     input_function: sp.FunctionClass,
     input_variable: sp.Symbol,
-) -> sp.Expr:
+) -> sp.Expr | KernelAnnotatedExpression:
     """Extract ``K(x, y)`` from a supported formal action ``(Tf)(x)``.
 
     The MVP shape is an unevaluated nested integral whose innermost integral
@@ -195,7 +228,13 @@ def extract_integral_kernel(
         )
     if kernel.has(input_atom):
         raise KernelExtractionError("The extracted kernel still contains f(y).")
-    return _canonicalize_remaining_integrals(kernel)
+    extracted = _canonicalize_remaining_integrals(kernel)
+    if isinstance(applied_expression, KernelAnnotatedExpression):
+        return KernelAnnotatedExpression(
+            extracted,
+            applied_expression.kernel_representations,
+        )
+    return extracted
 
 
 def extract_applied_kernels(
@@ -214,18 +253,40 @@ def extract_applied_kernels(
 
     return KernelCombination(
         tuple(
-            KernelTerm(
-                coefficient=term.coefficient,
-                product=term.product,
-                kernel=extract_integral_kernel(
-                    term.expression,
-                    output_variable,
-                    input_function,
-                    input_variable,
-                ),
+            _extract_applied_kernel_term(
+                term,
+                output_variable,
+                input_function,
+                input_variable,
             )
             for term in applied_combination.result_terms
         )
+    )
+
+
+def _extract_applied_kernel_term(
+    term: AppliedTerm,
+    output_variable: sp.Symbol,
+    input_function: sp.FunctionClass,
+    input_variable: sp.Symbol,
+) -> KernelTerm:
+    extracted = extract_integral_kernel(
+        term.expression,
+        output_variable,
+        input_function,
+        input_variable,
+    )
+    if isinstance(extracted, KernelAnnotatedExpression):
+        return KernelTerm(
+            coefficient=term.coefficient,
+            product=term.product,
+            kernel=extracted.expression,
+            kernel_representations=extracted.kernel_representations,
+        )
+    return KernelTerm(
+        coefficient=term.coefficient,
+        product=term.product,
+        kernel=extracted,
     )
 
 
@@ -379,9 +440,8 @@ def _require_regularizer_kernel(
 ) -> KernelRepresentation:
     if representation is None:
         raise KernelRepresentationRequiredError(
-            "The Schur regularizer is formal and has no explicit kernel "
-            "representation; no certified representation has been supplied. "
-            "Supply KernelRepresentation explicitly; no "
+            "The Schur regularizer is formal and has no explicitly supplied kernel "
+            "representation. Supply KernelRepresentation explicitly; no "
             "ordinary R11(u, v) kernel is created automatically."
         )
     if not isinstance(representation, KernelRepresentation):

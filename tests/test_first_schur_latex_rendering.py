@@ -317,6 +317,20 @@ def test_exact_and_mod_compact_steps_use_distinct_relation_symbols(formal_trace)
     assert r"A_{2,2}^{(1)} = A_{2,2}^{(1),\mathrm{model}}" not in compact
 
 
+def test_rendered_titles_expose_formal_scope_and_kernel_status(formal_trace):
+    rendered = render_first_schur_derivation_latex(formal_trace)
+
+    assert step_by_key(rendered, "exact_definition").title == (
+        "Formal algebraic definition"
+    )
+    assert "kernel status: formal" in step_by_key(
+        rendered, "combined_kernel"
+    ).title
+    assert "evidence objects: 0" in step_by_key(
+        rendered, "compact_model_action"
+    ).title
+
+
 def test_each_step_renders_the_corresponding_trace_field(formal_trace):
     rendered = render_first_schur_derivation_latex(formal_trace)
 

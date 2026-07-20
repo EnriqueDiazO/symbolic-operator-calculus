@@ -11,10 +11,16 @@ results, or function-class membership tests.
 conversion between them.  An API that requires exactness uses
 `require_exact_identity`; a modulo-compact relation is rejected.
 
+Every `ExactIdentity` also requires an `ExactIdentityScope` (`STRUCTURAL`,
+`SCALAR_SYMBOLIC`, `WITHIN_MODEL`, or `OPERATORIAL`).  The scope and evidence
+record a caller claim; construction does not verify a proof or promote a
+within-model identity to an operatorial theorem.
+
 `ModCompactEquivalence` stores optional `space`, `compact_ideal`, `residual`,
 and `evidence`.  With no evidence its `certification_status` is
-`UNCERTIFIED`.  Supplying evidence records an external justification; it does
-not make the software a compactness prover.
+`UNCERTIFIED`.  Supplying evidence changes that status to
+`EVIDENCE_SUPPLIED`, not `CERTIFIED`: it records an external justification and
+does not make the software a compactness prover.
 
 The compatibility types `ModCompactRelation` and `ModCompactSchurRelation`
 retain their `exact` and `model` endpoint names and expose the new semantic
@@ -56,6 +62,12 @@ Results involving the representation are returned as
 `kernel_representations`, `hypotheses`, and `semantic_statuses` retain the
 semantic data.  Calling `as_expr()` is an explicit projection that discards
 the wrapper, not a proof of convergence or operator existence.
+
+Kernel extraction retains this wrapper, and annotated LaTeX rendering displays
+the caller-assigned status plus counts of retained hypotheses and evidence.
+`EXTERNALLY_CERTIFIED` is only a caller-assigned representation status and
+requires an evidence object; the program does not validate that object as a
+proof.
 
 The following APIs now require the explicit `regularizer_kernel` argument when
 they reach the Schur kernel layer:

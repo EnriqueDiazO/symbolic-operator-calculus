@@ -100,8 +100,8 @@ class FirstSchurReduction:
 class ModCompactSchurRelation:
     """Modulo-compact declaration from a Schur reduction to an AST model.
 
-    The declaration is uncertified unless the caller supplies ``evidence``.
-    No compact residual is inferred from the endpoint types.
+    With evidence it is marked ``EVIDENCE_SUPPLIED``, not certified by the
+    program. No compact residual is inferred from the endpoint types.
     """
 
     exact: FirstSchurReduction
@@ -167,7 +167,8 @@ class ModCompactRelation:
 
     This compatibility wrapper retains the existing ``exact`` and ``model``
     endpoints while exposing an explicit :class:`ModCompactEquivalence`.
-    It is uncertified by default and never proves that its residual is compact.
+    It is uncertified by default. Evidence changes its status only to
+    ``EVIDENCE_SUPPLIED`` and never proves that its residual is compact.
     """
 
     exact: ExactBlock

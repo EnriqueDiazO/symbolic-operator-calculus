@@ -14,7 +14,7 @@ from .substitution import (
     fresh_symbol,
     substitute_free_variable,
 )
-from .semantics import ExactIdentity
+from .semantics import ExactIdentity, ExactIdentityScope
 
 
 class RelativeWienerHopfError(ValueError):
@@ -528,8 +528,24 @@ class RelativeWienerHopfIdentity:
             self,
             "exact_relations",
             (
-                ExactIdentity(self.original, self.left, evidence),
-                ExactIdentity(self.original, self.right, evidence),
+                ExactIdentity(
+                    self.original,
+                    self.left,
+                    evidence=evidence,
+                    scope=ExactIdentityScope.WITHIN_MODEL,
+                    hypotheses=(
+                        "canonical product shape and common L1 factorization",
+                    ),
+                ),
+                ExactIdentity(
+                    self.original,
+                    self.right,
+                    evidence=evidence,
+                    scope=ExactIdentityScope.WITHIN_MODEL,
+                    hypotheses=(
+                        "canonical product shape and common L1 factorization",
+                    ),
+                ),
             ),
         )
 

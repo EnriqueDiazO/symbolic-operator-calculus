@@ -250,8 +250,9 @@ Schur lanzan `KernelRepresentationRequiredError`; no se crea automaticamente
 una funcion simbolica `R11(u, v)`.
 
 Una `KernelRepresentation` formal o asumida no prueba que el kernel exista como
-funcion ordinaria. Incluso con una representacion certificada externamente, una
-`Integral` de SymPy no prueba convergencia, acotacion ni existencia del operador.
+funcion ordinaria. Incluso con el estatus aportado por el usuario
+`EXTERNALLY_CERTIFIED`, una `Integral` de SymPy no prueba convergencia,
+acotacion ni existencia del operador, y el programa no verifica la evidencia.
 No se permiten cancelaciones automaticas como \(A_{1,1}R_{1,1}=I\) ni
 \(R_{1,1}A_{1,1}=I\).
 
@@ -259,9 +260,10 @@ No se permiten cancelaciones automaticas como \(A_{1,1}R_{1,1}=I\) ni
 
 El modulo `semantics.py` distingue cuatro tipos inmutables y no convertibles:
 
-- `ExactIdentity`, con evidencia explicita;
+- `ExactIdentity`, con alcance y evidencia explicitos;
 - `FormalIdentity`, que no afirma validez analitica o exacta;
-- `ModCompactEquivalence`, certificada solo si el usuario aporta evidencia;
+- `ModCompactEquivalence`, con estatus `EVIDENCE_SUPPLIED` si el usuario aporta
+  evidencia, pero nunca certificada automaticamente;
 - `ApproximateEquality`, con tolerancia, norma o criterio y residual explicitos.
 
 En particular, el MVP distingue
@@ -283,6 +285,10 @@ identidad exacta. `ModCompactRelation` y `ModCompactSchurRelation` conservan sus
 endpoints historicos, pero exponen una `ModCompactEquivalence` no certificada
 por defecto. Los campos de espacio, ideal, residual y evidencia son datos
 aportados; el codigo no infiere que un residual sea compacto.
+
+El alcance de `ExactIdentity` distingue identidades estructurales, escalares,
+dentro de un modelo u operatoriales. El constructor registra la afirmacion y
+su evidencia; no comprueba que esa evidencia sea una demostracion.
 
 ## Invariantes de operadores Wiener–Hopf relativos
 
@@ -308,7 +314,8 @@ El orden de estos factores, su par \((k,j)\), sus escalas y la procedencia de
 los tres simbolos forman parte de la estructura validada. En
 `RelativeWienerHopfIdentity`, `exact_relations` contiene dos objetos
 `ExactIdentity` inmutables, cada uno con evidencia de la forma canonica y de la
-procedencia L1 validadas. No se usa un booleano `exact`. Estas relaciones no
+procedencia L1 validadas y alcance `WITHIN_MODEL`. No se usa un booleano
+`exact`. Estas relaciones no
 afirman por si solas que los tres productos hayan sido aplicados
 independientemente a una funcion. Esa semantica ejecutable y la verificacion
 algebraica independiente de correspondencias quedan fuera de A3.1 y

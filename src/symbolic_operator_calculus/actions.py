@@ -308,9 +308,8 @@ class FormalRegularizerAction:
     ) -> KernelAnnotatedExpression:
         if self.kernel_representation is None:
             raise KernelRepresentationRequiredError(
-                "The regularizer is formal and has no explicit kernel "
-                "representation; no certified representation has been supplied. "
-                "Supply KernelRepresentation explicitly before "
+                "The regularizer is formal and has no explicitly supplied kernel "
+                "representation. Supply KernelRepresentation explicitly before "
                 "constructing an ordinary SymPy Integral."
             )
         if integration_variable is None:
@@ -506,7 +505,7 @@ def apply_linear_combination(
     *,
     integration_variable: sp.Symbol | None = None,
 ) -> ScalarActionResult:
-    """Apply an ordered linear combination and return its SymPy projection.
+    """Apply an ordered linear combination while retaining kernel annotations.
 
     The current AST stores each term as ``Term(coefficient, Product(...))``.
     This function therefore implements ``(sum c_i A_i)f = sum c_i A_i(f)``.

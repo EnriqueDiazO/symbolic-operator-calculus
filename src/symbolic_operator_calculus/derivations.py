@@ -223,7 +223,9 @@ def _validate_derived_trace(
     regularizer_kernel: KernelRepresentation | None,
 ) -> None:
     if trace.reduced_relation.exact != a22_first_schur_reduction():
-        raise DerivationTraceError("reduced relation has an unexpected exact side.")
+        raise DerivationTraceError(
+            "reduced relation has an unexpected formal reduction side."
+        )
     if trace.reduced_relation.model != a22_first_schur_model():
         raise DerivationTraceError("reduced relation has an unexpected model side.")
     if trace.correction != a22_first_schur_correction():

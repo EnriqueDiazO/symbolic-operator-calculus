@@ -8,6 +8,7 @@ from symbolic_operator_calculus import (
     Vtilde_alpha2,
     Wminus_21,
     Wplus_12,
+    KernelAnnotatedExpression,
     KernelCombination,
     KernelTerm,
     apply_combined_kernel_c22 as _apply_combined_kernel_c22,
@@ -133,9 +134,11 @@ def test_i1_extract_integral_kernel_removes_only_input_integral():
 
     kernel = extract_integral_kernel(applied, x, f, y)
 
+    assert isinstance(kernel, KernelAnnotatedExpression)
     assert len(applied.atoms(sp.Integral)) == 3
     assert len(kernel.atoms(sp.Integral)) == 2
-    assert y not in collect_bound_symbols(kernel)
+    assert y not in collect_bound_symbols(kernel.expression)
+    assert kernel.kernel_representations == applied.kernel_representations
 
 
 def test_i2_input_function_disappears_from_extracted_kernel():

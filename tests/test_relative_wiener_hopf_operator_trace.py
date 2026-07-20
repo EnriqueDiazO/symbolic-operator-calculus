@@ -5,6 +5,7 @@ import sympy as sp
 
 from symbolic_operator_calculus import (
     DilationOperatorModel,
+    ExactIdentityScope,
     OrderedRelativeOperatorProduct,
     RelativeWienerHopfDerivationTrace,
     WienerHopfOperatorModel,
@@ -19,9 +20,13 @@ def trace():
     return build_relative_wiener_hopf_trace(1, 2, gamma1, gamma2, 0, d)
 
 
-def test_identity_is_immutable_typed_and_exact(trace):
+def test_identity_is_immutable_typed_and_exact_within_model(trace):
     assert isinstance(trace, RelativeWienerHopfDerivationTrace)
     assert len(trace.identity.exact_relations) == 2
+    assert all(
+        relation.scope is ExactIdentityScope.WITHIN_MODEL
+        for relation in trace.identity.exact_relations
+    )
     assert isinstance(trace.original_operator, OrderedRelativeOperatorProduct)
     assert not isinstance(trace.original_operator, sp.Mul)
     with pytest.raises(FrozenInstanceError):
