@@ -478,3 +478,33 @@ demuestra compacidad, convergencia, acotacion o propiedades Fredholm.
 LaTeX es solo una proyeccion de objetos simbolicos internos. Ninguna expresion
 matematica del motor debe depender de una cadena LaTeX para su identidad,
 expansion, composicion o comparacion estructural.
+
+## Hipotesis, dominios y singularidades
+
+`AssumptionContext` registra proposiciones booleanas explicitas. No demuestra
+esas proposiciones ni interpreta `UNDETERMINED` como consistencia. Las reglas
+internas de consistencia se limitan a contradicciones literales y cotas
+numericas elementales.
+
+`ComplexDomain` describe una region declarada de validez, con hipotesis y
+exclusiones. Su interseccion solo puede conservar o reducir el dominio; la
+presencia de un dominio no demuestra convergencia, acotacion ni existencia
+operatorial.
+
+`SingularSet` conserva polos, puntos y cortes de rama, singularidades
+removibles declaradas, singularidades desconocidas y exclusiones generales.
+Puede contener declaraciones del usuario, evidencia externa o resultados de
+reglas internas limitadas. SymPy no proporciona por si solo una teoria
+completa de ramas y polos, y no se usa muestreo numerico para declarar su
+ausencia.
+
+`ConditionalIdentity` es una igualdad escalar condicionada, distinta de una
+`ExactIdentity` incondicional. Sus hipotesis, dominio y singularidades son
+parte obligatoria de su uso. El estado
+`SYMBOLICALLY_CHECKED_UNDER_ASSUMPTIONS` significa solamente que una rutina
+algebraica escalar concreta obtuvo residual cero sin perder los metadatos; no
+significa un teorema operatorial demostrado. La evidencia externa tampoco se
+promueve automaticamente a verificacion interna.
+
+La infraestructura P0-B es una barrera semantica preparatoria para Mellin, no
+una implementacion del calculo de Mellin.

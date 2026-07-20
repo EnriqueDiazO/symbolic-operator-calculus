@@ -40,9 +40,103 @@ The domain's evidence status reuses P0-A's `UNCERTIFIED` and
 `EVIDENCE_SUPPLIED` distinction.  Supplying a domain or evidence does not
 prove convergence, boundedness, compactness, or existence of an operator.
 
+## Singular sets
+
+`SingularSet` contains immutable `Singularity` records and conditioned
+`SingularityAvoidance` records. Each singularity retains its location or set,
+kind, order when known, relevant variable, conditions, origin, evidence, and
+description. Origins distinguish user declarations, limited internal rules,
+and external evidence. Evidence is recorded but never promoted to an
+internally verified proof.
+
+The internal detector is intentionally not universal. It has structural rules
+only for:
+
+- poles of `coth(pi*z)` at `z = I*n`, `n` integer;
+- poles of negative powers of `sinh(pi*z)`;
+- the specialization `z = lambda + I*kappa`, where a real-line pole requires
+  `lambda = 0` and integer `kappa`;
+- principal-branch sensitivity of logarithms and noninteger powers.
+
+For `0 < kappa < 1`, the absence of an integer `kappa` is stored as a limited
+conditioned avoidance rule. The underlying conditional pole record remains;
+it is not erased. At `kappa = 0` or `kappa = 1`, `lambda = 0` is reported as
+singular. No numerical sampling is used to declare a pole or branch absent.
+
+For `gamma**(I*lambda)`, a positive-real-base treatment is available only when
+the explicit context contains `gamma > 0`. A SymPy symbol property by itself
+does not add that proposition to the context. The principal-branch records are
+retained together with the conditioned positive-base avoidance.
+
+## Conditional scalar identities
+
+`ConditionalIdentity` is distinct from P0-A's `ExactIdentity`. It stores its
+left and right scalar expressions, `AssumptionContext`, `ComplexDomain`,
+`SingularSet`, scalar scope, verification status, evidence, and description.
+It cannot be constructed with operatorial scope and `require_exact_identity`
+rejects it.
+
+Verification statuses mean:
+
+- `DECLARED`: conditions and the equality are caller declarations;
+- `SYMBOLICALLY_CHECKED_UNDER_ASSUMPTIONS`: the concrete
+  `sympy_simplify_difference` routine returned a residual whose `is_zero` is
+  explicitly `True`, while every condition remained attached;
+- `EVIDENCE_SUPPLIED`: an external evidence object was provided.
+
+`SYMBOLICALLY_CHECKED_UNDER_ASSUMPTIONS` is not an operatorial theorem,
+analytic continuation result, or proof of boundedness. Supplying evidence does
+not automatically change a `DECLARED` identity's status and never turns
+external evidence into an internal check.
+
+`require_applicable_identity` accepts a conditional identity only when the
+available context contains every required hypothesis, consistency is decided,
+the available domain is provably no broader than the declared domain, and the
+stored singularities are provably avoided. A missing condition, a broader or
+unrelated domain, a singular point, or an undetermined check causes an
+explicit exception.
+
+Substitution updates expressions, assumptions, domain, and singularities;
+values such as `kappa = 0` are rejected because they violate the stored open
+interval. Scalar differentiation preserves the domain and assumptions and
+unions newly detected singularities with the old set. Combining identities
+unions contexts, intersects domains, unions singular sets, retains evidence as
+separate records, and never strengthens verification status.
+
+Calling `.as_expr()` is a deliberate one-way projection to a SymPy equality.
+The result has lost the semantic metadata and no API reconstructs a stronger
+status from it.
+
+## Reference family
+
+`build_coth_conditional_identities(lambda, kappa)` constructs the scalar
+functions
+
+\[
+s(\lambda)=\coth\!\bigl(\pi(\lambda+i\kappa)\bigr),\qquad
+p_\pm(\lambda)=\frac{1\pm s(\lambda)}{2},
+\]
+
+and conditioned, scalar-only identities for
+
+\[
+p_-p_+=-\frac{1}{4\sinh^2\!\bigl(\pi(\lambda+i\kappa)\bigr)},
+\]
+
+\[
+s'(\lambda)=-\frac{\pi}{\sinh^2\!\bigl(\pi(\lambda+i\kappa)\bigr)},
+\qquad
+p_\pm'(\lambda)=\mp\frac{\pi}{2\sinh^2\!\bigl(\pi(\lambda+i\kappa)\bigr)}.
+\]
+
+Every identity retains `lambda in R`, `0 < kappa < 1`, its limited pole
+records, scalar scope, and the exact algebraic-check record.
+
 ## Current boundary
 
-This first P0-B layer does not implement Mellin transforms, branch analysis,
-pole detection, conditional identities, weighted spaces, Fredholm theory, or
-automatic inequality solving.  Singular sets and conditional scalar
-identities are introduced only in the next guarded part of P0-B.
+P0-B prepares semantic metadata for later Mellin work; it does not implement
+Mellin transforms or convolution. It also does not implement weighted `L^p`
+spaces, `V(R)`, `C_0(R)`, normalized shifts, total variation, general operator
+matrices, determinants, Fredholmness, indices, compactness proofs, analytic
+regularizers, boundary fibers, or a general inequality/theorem solver. SymPy
+alone does not provide a complete theory of branches or poles.

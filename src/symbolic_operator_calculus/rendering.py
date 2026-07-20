@@ -9,7 +9,9 @@ import sympy as sp
 from sympy.printing.latex import LatexPrinter
 
 from .actions import AppliedLinearCombination, PrincipalValue
+from .conditional import ConditionalIdentity
 from .derivations import FirstSchurDerivationTrace
+from .domains import AssumptionContext, ComplexDomain, DomainRegionKind
 from .kernels import KernelCombination
 from .operators import (
     G1,
@@ -23,7 +25,14 @@ from .operators import (
 )
 from .relations import ExactBlock, FirstSchurReduction
 from .relative_wiener_hopf import RelativeWienerHopfDerivationTrace
-from .semantics import KernelAnnotatedExpression
+from .semantics import (
+    ApproximateEquality,
+    ExactIdentity,
+    FormalIdentity,
+    KernelAnnotatedExpression,
+    ModCompactEquivalence,
+)
+from .singularities import SingularSet
 
 
 OPERATOR_LATEX: dict[str, str] = {
@@ -59,6 +68,130 @@ SCALAR_SYMBOL_LATEX: dict[str, str] = {
 
 class LatexRenderingError(ValueError):
     """Raised when an object has no supported K7B LaTeX representation."""
+
+
+def _semantic_endpoint_latex(value: object) -> str:
+    if isinstance(value, sp.Basic):
+        return _StructuredScalarLatexPrinter().doprint(value)
+    escaped = r"\_".join(str(value).split("_"))
+    return rf"\text{{{escaped}}}"
+
+
+def render_assumption_context_latex(context: AssumptionContext) -> str:
+    """Render every stored condition without claiming it has been proved."""
+
+    if not isinstance(context, AssumptionContext):
+        raise TypeError("context must be an AssumptionContext.")
+    if not context.assumptions:
+        return r"\text{no explicit assumptions}"
+    conditions = r" \\ ".join(sp.latex(item) for item in context.assumptions)
+    return rf"\substack{{{conditions}}}"
+
+
+def render_complex_domain_latex(domain: ComplexDomain) -> str:
+    """Render the declared region, assumptions, and exclusions."""
+
+    if not isinstance(domain, ComplexDomain):
+        raise TypeError("domain must be a ComplexDomain.")
+    variable = sp.latex(domain.variable)
+    regions: list[str] = []
+    for region in domain.regions:
+        if region.kind is DomainRegionKind.COMPLEX_PLANE:
+            regions.append(rf"{variable}\in\mathbb{{C}}")
+        elif region.kind is DomainRegionKind.REAL_LINE:
+            regions.append(rf"{variable}\in\mathbb{{R}}")
+        elif region.kind is DomainRegionKind.UPPER_HALF_PLANE:
+            regions.append(rf"\operatorname{{Im}}{variable}>0")
+        elif region.kind is DomainRegionKind.LOWER_HALF_PLANE:
+            regions.append(rf"\operatorname{{Im}}{variable}<0")
+        elif region.kind is DomainRegionKind.VERTICAL_STRIP:
+            regions.append(
+                rf"{sp.latex(region.lower)}<\operatorname{{Re}}{variable}"
+                rf"<{sp.latex(region.upper)}"
+            )
+        elif region.kind is DomainRegionKind.HORIZONTAL_STRIP:
+            regions.append(
+                rf"{sp.latex(region.lower)}<\operatorname{{Im}}{variable}"
+                rf"<{sp.latex(region.upper)}"
+            )
+        elif region.condition is not None:
+            regions.append(sp.latex(region.condition))
+    if domain.exclusions:
+        excluded = ",".join(sp.latex(item) for item in domain.exclusions)
+        regions.append(rf"{variable}\notin\left\{{{excluded}\right\}}")
+    regions.append(render_assumption_context_latex(domain.assumption_context))
+    return r"\;\land\;".join(regions)
+
+
+def render_singular_set_latex(singular_set: SingularSet) -> str:
+    """Render stored singularities, conditions, and origin labels."""
+
+    if not isinstance(singular_set, SingularSet):
+        raise TypeError("singular_set must be a SingularSet.")
+    if not singular_set.singularities:
+        return r"\operatorname{Sing}_{\mathrm{declared}}=\varnothing"
+    entries: list[str] = []
+    for singularity in singular_set.singularities:
+        conditions = render_assumption_context_latex(singularity.conditions)
+        order = "" if singularity.order is None else rf",\;m={singularity.order}"
+        entries.append(
+            rf"\text{{{' '.join(singularity.kind.value.split('_'))}}}:\;"
+            rf"{sp.latex(singularity.variable)}\in{sp.latex(singularity.location)}"
+            rf"{order}\;[\text{{{' '.join(singularity.origin.value.split('_'))}}};\;"
+            rf"{conditions}]"
+        )
+    return r"\substack{" + r" \\ ".join(entries) + "}"
+
+
+def render_conditional_identity_latex(identity: ConditionalIdentity) -> str:
+    """Render a conditional scalar equality with all validity metadata visible."""
+
+    if not isinstance(identity, ConditionalIdentity):
+        raise TypeError("identity must be a ConditionalIdentity.")
+    lhs = _semantic_endpoint_latex(identity.lhs)
+    rhs = _semantic_endpoint_latex(identity.rhs)
+    conditions = render_assumption_context_latex(identity.assumption_context)
+    domain = render_complex_domain_latex(identity.domain)
+    singularities = render_singular_set_latex(identity.singular_set)
+    status = " ".join(identity.verification_status.value.split("_"))
+    return (
+        rf"\left.{lhs}={rhs}\;\right|_{{{conditions}}}"
+        rf"\quad\substack{{\text{{conditional scalar identity}} \\ "
+        rf"\text{{scope: {' '.join(identity.scope.value.split('_'))}}} \\ "
+        rf"\text{{status: {status}}} \\ {domain} \\ {singularities}}}"
+    )
+
+
+def render_semantic_relation_latex(relation: object) -> str:
+    """Visually distinguish the semantic relation types introduced in P0."""
+
+    if isinstance(relation, ConditionalIdentity):
+        return render_conditional_identity_latex(relation)
+    if isinstance(relation, ExactIdentity):
+        return (
+            rf"{_semantic_endpoint_latex(relation.left)}"
+            rf"\overset{{\text{{exact: {relation.scope.value}}}}}{{=}}"
+            rf"{_semantic_endpoint_latex(relation.right)}"
+        )
+    if isinstance(relation, FormalIdentity):
+        return (
+            rf"{_semantic_endpoint_latex(relation.left)}"
+            rf"\overset{{\text{{formal}}}}{{=}}"
+            rf"{_semantic_endpoint_latex(relation.right)}"
+        )
+    if isinstance(relation, ModCompactEquivalence):
+        return (
+            rf"{_semantic_endpoint_latex(relation.left)}"
+            rf"\equiv_{{\mathrm{{mod}}\,\mathcal K}}"
+            rf"{_semantic_endpoint_latex(relation.right)}"
+        )
+    if isinstance(relation, ApproximateEquality):
+        return (
+            rf"{_semantic_endpoint_latex(relation.left)}"
+            rf"\overset{{\text{{approximate}}}}{{\approx}}"
+            rf"{_semantic_endpoint_latex(relation.right)}"
+        )
+    raise LatexRenderingError("unsupported semantic relation type.")
 
 
 class _StructuredScalarLatexPrinter(LatexPrinter):

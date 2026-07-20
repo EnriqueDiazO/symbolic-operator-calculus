@@ -260,3 +260,25 @@ Los tests deben comparar estructura matematica, no solo strings LaTeX.
 - Igualdad exacta y equivalencia modulo compactos son relaciones distintas.
 - Las transformadas inversas producen \(K^+\) y \(K^-\) bajo \(d>0\).
 - Todas las expresiones principales exportan a LaTeX.
+
+## Barrera semantica P0-B
+
+P0-B incorpora contenedores inmutables para hipotesis, dominios complejos,
+singularidades e identidades escalares condicionadas. Estas estructuras
+conservan condiciones durante interseccion, sustitucion, diferenciacion
+escalar limitada y renderizado. Rechazan usos con hipotesis ausentes, dominios
+mas amplios o singularidades no evitadas.
+
+Esta capacidad no amplia el objetivo al analisis complejo automatico:
+`AssumptionContext` registra condiciones, `ComplexDomain` declara una region,
+`SingularSet` aplica solo reglas estructurales acotadas y
+`ConditionalIdentity` nunca se convierte implicitamente en `ExactIdentity`.
+La fase prepara metadatos para un trabajo futuro sobre Mellin, sin implementar
+Mellin en el MVP actual.
+
+Siguen fuera de alcance las transformadas, convoluciones y
+pseudodiferenciales de Mellin; (V(\mathbb R)), (C_0(\mathbb R)), variacion
+total y espacios (L^p\) ponderados; shifts normalizados (U_\gamma\); matrices
+generales y determinantes operatoriales; Fredholmness e indices; pruebas de
+compacidad; regularizadores analiticos; calculo de fibras frontera; y
+resolucion general de desigualdades.

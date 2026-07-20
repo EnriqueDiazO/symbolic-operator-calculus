@@ -22,7 +22,7 @@ from sympy.core.relational import (
     StrictLessThan,
     Unequality,
 )
-from sympy.logic.boolalg import BooleanAtom, BooleanFunction
+from sympy.logic.boolalg import Boolean, BooleanAtom, BooleanFunction
 
 from .semantics import CertificationStatus
 
@@ -88,7 +88,13 @@ def _as_proposition(value: object) -> sp.Basic:
         raise InvalidAssumptionError(
             "assumptions must be SymPy Boolean propositions."
         ) from exc
-    if not isinstance(proposition, (Relational, BooleanFunction, BooleanAtom)):
+    valid_boolean = isinstance(
+        proposition, (Relational, BooleanFunction, BooleanAtom)
+    ) or (
+        isinstance(proposition, Boolean)
+        and not isinstance(proposition, sp.Expr)
+    )
+    if not valid_boolean:
         raise InvalidAssumptionError(
             "assumptions must be explicit relations or Boolean expressions; "
             "plain symbolic expressions are not propositions."
@@ -788,9 +794,13 @@ class ComplexDomain:
             raise DomainVariableMismatchError(
                 "domains with different principal variables cannot be intersected."
             )
-        description_parts = [
-            part for part in (self.description, other.description) if part is not None
-        ]
+        description_parts = list(
+            dict.fromkeys(
+                part
+                for part in (self.description, other.description)
+                if part is not None
+            )
+        )
         return ComplexDomain(
             variable=self.variable,
             regions=(*self.regions, *other.regions),

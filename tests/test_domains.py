@@ -128,6 +128,16 @@ def test_reference_hypotheses_are_preserved_exactly():
     assert context.as_boolean_expression() == sp.And(*assumptions)
 
 
+def test_set_membership_is_an_explicit_boolean_proposition():
+    kappa = sp.Symbol("kappa")
+    membership = sp.Contains(kappa, sp.S.Integers)
+
+    context = AssumptionContext((membership,))
+
+    assert context.assumptions == (membership,)
+    assert context.consistency_status is ConsistencyStatus.UNDETERMINED
+
+
 def test_substitution_rechecks_hypotheses_instead_of_dropping_them():
     kappa = sp.Symbol("kappa")
     context = AssumptionContext((kappa > 0, kappa < 1))

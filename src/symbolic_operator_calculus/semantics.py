@@ -145,8 +145,9 @@ def require_exact_identity(relation: object) -> ExactIdentity:
 
     if not isinstance(relation, ExactIdentity):
         raise ExactIdentityRequiredError(
-            "This operation requires ExactIdentity; formal, modulo-compact, "
-            "and approximate relations are not interchangeable with it."
+            "This operation requires ExactIdentity; conditional, formal, "
+            "modulo-compact, and approximate relations are not interchangeable "
+            "with it."
         )
     return relation
 
