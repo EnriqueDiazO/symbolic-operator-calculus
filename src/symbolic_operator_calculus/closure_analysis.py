@@ -438,7 +438,7 @@ class FirstPivotClosureAnalysis:
             for item in self.obligations
             if item.status is ClosureObligationStatus.ANALYTICALLY_PROVED
         }
-        if not proved <= {"P-02", "P-03"}:
+        if not proved <= {"P-02", "P-03", "P-04", "P-06"}:
             raise ClosureAnalysisError("only independently discharged nodes may be proved.")
 
 
@@ -874,19 +874,19 @@ def closure_result_interface_matrix() -> tuple[ClosureResultInterfaceRow, ...]:
     return (
         row(
             r"P^\pm \times R_1",
-            "KKL2014TwoShifts Lemma 2.7",
-            ("weighted conjugated commutation in the paper's space",),
-            ("P^pm are exact Mellin convolution factors",),
-            ("source theorem is unweighted and concerns the Cauchy algebra",),
-            ClosureInterfaceStatus.NO_RULE,
+            "KKL2014TwoShifts Theorem 3.3",
+            ("p^pm and r1 belong to E on the conjugated space",),
+            ("all memberships, space transport, and factor order are verified",),
+            ("the result has only mod-compact strength",),
+            ClosureInterfaceStatus.CERTIFIED_MOD_COMPACT,
         ),
         row(
             r"U_1^{-1}P^+ \times R_1",
-            "KKL2014TwoShifts Lemma 2.7 and Theorem 5.2",
-            ("weighted ordered rule including the exterior dilation",),
-            ("the factor order is represented exactly",),
-            ("no source result covers this weighted ordered triple",),
-            ClosureInterfaceStatus.BLOCKED,
+            "Phase R exact left covariance after Theorem 3.3",
+            ("Cauchy semiproduct and x/gamma radial scaling invariance",),
+            ("factorized d_(gamma^-1) representation is proved",),
+            ("no standard E-tilde membership is claimed for the full product",),
+            ClosureInterfaceStatus.CERTIFIED_MOD_COMPACT,
         ),
         row(
             r"R_1 \times U_1",
@@ -1012,14 +1012,14 @@ def closure_proof_obligations() -> tuple[ClosureProofObligation, ...]:
         ),
         node(
             "P-04",
-            "Place the separately controlled R1 U1 and R1 Ghat1 cases in one admissible H1 framework.",
+            "Control the R1 U1 and R1 Ghat1 cases separately at their proved strengths.",
             ("P-02", "P-03"),
             ("KKL2014TwoShifts:3.3", "KKL2014TwoShifts:3.4"),
             (R1, U1, Ghat1),
-            ClosureObligationStatus.BLOCKED,
-            "U1 case: provisional-class closure; Ghat1 case: already certified mod compact",
-            "blocks uniform H1 and every longer candidate",
-            "one named admissible framework covering both relations at their proved strengths",
+            ClosureObligationStatus.ANALYTICALLY_PROVED,
+            "exact right-factorized dilation case and mod-compact coefficient case",
+            "discharges both short cores without asserting a common algebra",
+            "retain the two relations and their distinct output classes",
         ),
         node(
             "P-05",
@@ -1034,14 +1034,14 @@ def closure_proof_obligations() -> tuple[ClosureProofObligation, ...]:
         ),
         node(
             "P-06",
-            "Control Q1 before R1 B1 Wplus_12 without commuting it.",
-            ("P-05",),
-            ("KKL2014TwoShifts:2.7", "KKL2014TwoShifts:5.2"),
+            "Control Q1 before each R1 B1 core, stopping before Wplus_12.",
+            ("P-04",),
+            ("phase-r:left-covariance", "KKL2014TwoShifts:3.3"),
             (U1_inverse, P_plus, P_minus, R1),
-            ClosureObligationStatus.BLOCKED,
-            "weighted ordered rule for both Q1 choices",
-            "blocks H3",
-            "preserve the stored order and produce a controlled remainder",
+            ClosureObligationStatus.ANALYTICALLY_PROVED,
+            "four ordered prefix derivations and compact-ideal stability",
+            "leaves only right composition with Wplus_12 common to the four words",
+            "two standard and two right-factorized Mellin PDOs modulo compacts",
         ),
         node(
             "P-07",
@@ -1170,10 +1170,13 @@ def closure_lemma_candidates() -> tuple[ClosureLemmaCandidate, ...]:
             ),
             ("KKL2014TwoShifts:2.7", "KKL2014TwoShifts:5.2"),
             ("the four Q1,B1 words are exact AST products",),
-            ("the full right core is contiguous in all 16 terms",),
             (
-                "H1 and H2 remain blocked",
-                "the source commutation theorem is unweighted and cannot reorder here",
+                "the full right core is contiguous in all 16 terms",
+                "all four prefixes before Wplus_12 are controlled modulo compacts",
+            ),
+            (
+                "H2 and the identification of Wplus_12 remain blocked",
+                "no rule yet composes a reduced prefix with Wplus_12",
             ),
             16,
             "Bundles three independent missing interfaces and risks hiding them.",
@@ -1183,29 +1186,29 @@ def closure_lemma_candidates() -> tuple[ClosureLemmaCandidate, ...]:
 
 
 def minimal_closure_decision() -> MinimalClosureDecision:
-    """Retain NONE until the factorized output and Wplus_12 are controlled."""
+    """Retain NONE until right composition with Wplus_12 is controlled."""
 
     return MinimalClosureDecision(
         decision=MinimalLemmaChoice.NONE,
         confidence=DecisionConfidence.HIGH,
-        blocking_obligations=("P-01", "P-04"),
+        blocking_obligations=("P-01", "P-05"),
         evidence=(
             "phase-q:exact-right-dilation-definition-proof",
             "phase-q:certified-Ghat1-semiproduct",
+            "phase-r:four-left-cores-mod-compact",
             "paper:normalized-wh-blocks-section-six",
             "KKL2014TwoShifts:3.3",
             "KKL2014TwoShifts:4.4",
             "Karlovich2025Cusps:3.3",
         ),
         rationale=(
-            "The two H1 cases now have separate certified relations, but the exact "
-            "factorized U1 output has no proved closed admissible calculus. H2 and H3 "
-            "also require an unproved identification of the localized Wplus_12."
+            "All four prefixes before Wplus_12 now have certified standard or "
+            "right-factorized representations modulo compacts. H2 and H3 still "
+            "require identification of Wplus_12 and a proved right-composition rule."
         ),
         prerequisite_statement=(
-            "Prove the minimum closure properties needed for the factorized pair "
-            "(r1,d_gamma1), without forcing it into E-tilde; independently identify "
-            "Wplus_12 before attempting H2."
+            "Identify Wplus_12 in a compatible operator class, then control its "
+            "right composition with each of the four already reduced left cores."
         ),
     )
 

@@ -212,15 +212,18 @@ def build_exponential_sinh_symbol(
 def build_dilation_multiplier(
     lam: sp.Symbol,
     gamma: sp.Symbol,
+    *,
+    inverse: bool = False,
 ) -> MellinSymbol:
-    """Build gamma**(i lambda) only on the explicitly declared gamma > 0 branch."""
+    """Build gamma**(+/- i lambda) on the declared gamma > 0 branch."""
 
     lam = _validate_symbol(lam, "lam")
     gamma = _validate_symbol(gamma, "gamma")
     frequency = mellin_frequency(lam)
     parameter = mellin_parameter(gamma)
     context = AssumptionContext((gamma > 0,))
-    expression = sp.Pow(gamma, sp.I * lam, evaluate=False)
+    exponent = -sp.I * lam if inverse else sp.I * lam
+    expression = sp.Pow(gamma, exponent, evaluate=False)
     return _make_symbol(
         expression,
         frequency=frequency,
@@ -228,7 +231,11 @@ def build_dilation_multiplier(
         variables=(frequency,),
         parameters=(parameter,),
         dependency=MellinSymbolDependency.FREQUENCY_ONLY,
-        description="positive-base scalar dilation multiplier",
+        description=(
+            "positive-base inverse-dilation multiplier"
+            if inverse
+            else "positive-base scalar dilation multiplier"
+        ),
     )
 
 

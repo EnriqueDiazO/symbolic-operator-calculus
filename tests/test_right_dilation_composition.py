@@ -108,7 +108,11 @@ def test_factorized_class_does_not_claim_standard_product_membership():
     assert factorized.standard_product_membership is (
         StandardMellinMembership.NOT_DEMONSTRATED
     )
-    assert len(factorized.pending_properties) == 7
+    assert len(factorized.pending_properties) == 6
+    assert all(
+        item.key != "right_gamma_left_composition"
+        for item in factorized.pending_properties
+    )
     assert not hasattr(factorized, "as_expr")
 
 

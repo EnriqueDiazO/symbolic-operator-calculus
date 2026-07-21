@@ -46,6 +46,8 @@ from .relations import ExactBlock, FirstSchurReduction
 from .relative_wiener_hopf import RelativeWienerHopfDerivationTrace
 from .right_dilation import (
     CoefficientSemiproductTrace,
+    FirstPivotLeftCoreClosureTrace,
+    LeftDilationCovarianceTrace,
     RightDilationCompositionTrace,
 )
 from .semantics import (
@@ -490,6 +492,50 @@ def render_coefficient_semiproduct_latex(
         r"\quad\bmod\mathcal K"
         r"\quad[\mathrm{CERTIFIED\_MOD\_COMPACT}]"
     )
+
+
+def render_left_dilation_covariance_latex(
+    trace: LeftDilationCovarianceTrace,
+) -> str:
+    """Render both exact Phase R covariance identities."""
+
+    if not isinstance(trace, LeftDilationCovarianceTrace):
+        raise TypeError("trace must be a LeftDilationCovarianceTrace.")
+    return (
+        r"D_{\gamma}^{-1}\operatorname{Op}(a)"
+        r"=\operatorname{Op}_{\mathrm{right}\text{-}\gamma^{-1}}"
+        r"(a_{\gamma},d_{\gamma^{-1}}),\quad"
+        r"D_{\gamma}^{-1}\operatorname{Op}(a)D_{\gamma}"
+        r"=\operatorname{Op}(a_{\gamma}),\quad"
+        r"a_{\gamma}(x,\lambda)=a(x/\gamma,\lambda),\quad"
+        r"d_{\gamma^{-1}}(\lambda)=\gamma^{-i\lambda}."
+    )
+
+
+def render_first_pivot_left_cores_latex(
+    trace: FirstPivotLeftCoreClosureTrace,
+) -> str:
+    """Render the four pre-Wiener--Hopf cores at mod-compact strength."""
+
+    if not isinstance(trace, FirstPivotLeftCoreClosureTrace):
+        raise TypeError("trace must be a FirstPivotLeftCoreClosureTrace.")
+    products = {
+        core.identifier: render_product_latex(core.ast_product)
+        for core in trace.cores
+    }
+    rows = (
+        rf"{products['L-+']} &\simeq \Phi_\delta^{{-1}}"
+        r"\operatorname{Op}_{\mathrm{right}\text{-}\gamma_1}"
+        r"(p^-r_1,d_{\gamma_1})\Phi_\delta",
+        rf"{products['L++']} &\simeq \Phi_\delta^{{-1}}"
+        r"\operatorname{Op}(p^+(\lambda)r_1(x/\gamma_1,\lambda))\Phi_\delta",
+        rf"{products['L-Ghat']} &\simeq \Phi_\delta^{{-1}}"
+        r"\operatorname{Op}(p^-(\lambda)r_1(x,\lambda)\widehat G_1(x))\Phi_\delta",
+        rf"{products['L+Ghat']} &\simeq \Phi_\delta^{{-1}}"
+        r"\operatorname{Op}_{\mathrm{right}\text{-}\gamma_1^{-1}}"
+        r"(p^+r_{1,\gamma_1}\widehat G_{1,\gamma_1},d_{\gamma_1^{-1}})\Phi_\delta",
+    )
+    return "\\[\n\\begin{aligned}\n" + " \\\\\n".join(rows) + "\n\\end{aligned}\n\\]\n"
 
 
 def _yaml_scalar(value: str) -> str:

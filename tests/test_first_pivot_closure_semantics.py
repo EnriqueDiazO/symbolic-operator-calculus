@@ -33,8 +33,8 @@ def test_interface_matrix_contains_two_phase_q_certifications_only():
 
     assert len(matrix) == 9
     assert tuple(row.status for row in matrix) == (
-        ClosureInterfaceStatus.NO_RULE,
-        ClosureInterfaceStatus.BLOCKED,
+        ClosureInterfaceStatus.CERTIFIED_MOD_COMPACT,
+        ClosureInterfaceStatus.CERTIFIED_MOD_COMPACT,
         ClosureInterfaceStatus.CERTIFIED_EXACT,
         ClosureInterfaceStatus.CERTIFIED_MOD_COMPACT,
         ClosureInterfaceStatus.ANALOGY_ONLY,
@@ -44,7 +44,7 @@ def test_interface_matrix_contains_two_phase_q_certifications_only():
         ClosureInterfaceStatus.BLOCKED,
     )
     assert rendered.count("CERTIFIED_EXACT") == 1
-    assert rendered.count("CERTIFIED_MOD_COMPACT") == 1
+    assert rendered.count("CERTIFIED_MOD_COMPACT") == 3
 
 
 def test_obligation_graph_marks_only_the_two_phase_q_nodes_proved():
@@ -61,10 +61,10 @@ def test_obligation_graph_marks_only_the_two_phase_q_nodes_proved():
         item.identifier
         for item in obligations
         if item.status is ClosureObligationStatus.ANALYTICALLY_PROVED
-    } == {"P-02", "P-03"}
+    } == {"P-02", "P-03", "P-04", "P-06"}
     assert render_closure_obligations_yaml(obligations).count(
         "ANALYTICALLY_PROVED"
-    ) == 2
+    ) == 4
     assert "P_11 --> P_12" in render_closure_graph_markdown(obligations)
 
 
@@ -84,7 +84,7 @@ def test_candidates_are_open_and_decision_is_exactly_none_high_confidence():
     )
     assert decision.decision is MinimalLemmaChoice.NONE
     assert decision.confidence is DecisionConfidence.HIGH
-    assert decision.blocking_obligations == ("P-01", "P-04")
+    assert decision.blocking_obligations == ("P-01", "P-05")
     rendered = render_minimal_closure_decision_yaml(decision)
     assert rendered.startswith("decision: NONE\nconfidence: high\n")
     assert "Fredholm" not in decision.prerequisite_statement
