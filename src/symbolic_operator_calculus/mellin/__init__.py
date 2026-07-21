@@ -1,4 +1,4 @@
-"""Typed infrastructure for scalar Mellin symbols; no operators are defined."""
+"""Typed scalar Mellin infrastructure and metadata-rich operator models."""
 
 from .domains import (
     MellinDomainError,
@@ -20,6 +20,29 @@ from .expressions import (
     MellinExpressionError,
     MellinSingularMetadataRequiredError,
     UndeclaredMellinVariableError,
+)
+from .operators import (
+    AlgebraMembershipClaim,
+    AlgebraMembershipStatus,
+    DilationConvention,
+    DilationCovarianceEvidence,
+    DilationCovarianceTrace,
+    MellinConvolutionOperator,
+    MellinOperatorError,
+    MellinPseudodifferentialOperator,
+    MultiplicationOperator,
+    RadialScalingEvidence,
+    RegularizerMellinRepresentation,
+    RegularizerRepresentationStatus,
+    WeightNormConvention,
+    WeightedDilationOperator,
+    WeightedLpSpace,
+    WienerHopfOperator,
+    conjugate_mellin_convolution_by_dilation,
+    conjugate_mellin_pdo_by_dilation,
+    conjugate_multiplication_by_dilation,
+    conjugate_wiener_hopf_by_dilation,
+    scale_radial_symbol,
 )
 from .rendering import (
     render_conditional_scalar_identity_latex,
@@ -49,6 +72,11 @@ from .variables import (
 )
 
 __all__ = [
+    "AlgebraMembershipClaim",
+    "AlgebraMembershipStatus",
+    "DilationConvention",
+    "DilationCovarianceEvidence",
+    "DilationCovarianceTrace",
     "MellinDomainError",
     "MellinDomainRoleError",
     "MellinBranchConditionRequiredError",
@@ -56,6 +84,9 @@ __all__ = [
     "MellinExpression",
     "MellinExpressionError",
     "MellinFrequencyMismatchError",
+    "MellinConvolutionOperator",
+    "MellinOperatorError",
+    "MellinPseudodifferentialOperator",
     "MellinSingularMetadataRequiredError",
     "MellinSymbol",
     "MellinSymbolDependency",
@@ -65,7 +96,15 @@ __all__ = [
     "MellinVariableError",
     "MellinVariableRole",
     "MellinVariableRoleError",
+    "MultiplicationOperator",
+    "RadialScalingEvidence",
+    "RegularizerMellinRepresentation",
+    "RegularizerRepresentationStatus",
     "UndeclaredMellinVariableError",
+    "WeightNormConvention",
+    "WeightedDilationOperator",
+    "WeightedLpSpace",
+    "WienerHopfOperator",
     "DiagonalMellinSymbolFamily",
     "build_diagonal_mellin_symbols",
     "build_dilation_multiplier",
@@ -73,6 +112,10 @@ __all__ = [
     "build_relative_frequency_symbol",
     "build_space_frequency_symbol",
     "classify_mellin_dependency",
+    "conjugate_mellin_convolution_by_dilation",
+    "conjugate_mellin_pdo_by_dilation",
+    "conjugate_multiplication_by_dilation",
+    "conjugate_wiener_hopf_by_dilation",
     "input_spatial_variable",
     "mellin_frequency",
     "mellin_parameter",
@@ -84,4 +127,5 @@ __all__ = [
     "render_mellin_expression_text",
     "render_mellin_symbol_latex",
     "render_mellin_symbol_text",
+    "scale_radial_symbol",
 ]
