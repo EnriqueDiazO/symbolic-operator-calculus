@@ -1,0 +1,55 @@
+% Reusable Phase R fragment; no document preamble.
+\paragraph{Conventions.}
+Let \(d\mu(x)=dx/x\), \((D_\gamma f)(x)=f(\gamma x)\), and
+\[
+ [\operatorname{Op}(a)f](x)
+ =\frac1{2\pi}\int_{\mathbb R}\int_0^\infty
+ a(x,\lambda)\left(\frac{x}{y}\right)^{i\lambda}
+ f(y)\frac{dy}{y}\,d\lambda.
+\]
+Put
+\[
+ a_\gamma(x,\lambda):=a(x/\gamma,\lambda),
+ \qquad d_{\gamma^{-1}}(\lambda):=\gamma^{-i\lambda}.
+\]
+
+\paragraph{Exact left covariance.}
+For \(f\in C_c^\infty(\mathbb R_+)\), with symmetric truncation of the
+outer frequency integral,
+\[
+\begin{aligned}
+ [D_\gamma^{-1}\operatorname{Op}(a)f](x)
+ &= [\operatorname{Op}(a)f](x/\gamma)\\
+ &=\frac1{2\pi}\int_{\mathbb R}\int_0^\infty
+ a_\gamma(x,\lambda)\gamma^{-i\lambda}
+ \left(\frac{x}{y}\right)^{i\lambda}
+ f(y)\frac{dy}{y}\,d\lambda.
+\end{aligned}
+\]
+No integrations or operator factors are interchanged. Therefore
+\[
+ \boxed{
+ D_\gamma^{-1}\operatorname{Op}(a)
+ =\operatorname{Op}_{\mathrm{right}\text{-}\gamma^{-1}}
+ (a_\gamma,d_{\gamma^{-1}})
+ }
+\]
+exactly. Moreover,
+\[
+ \boxed{
+ D_\gamma^{-1}\operatorname{Op}(a)D_\gamma
+ =\operatorname{Op}(a_\gamma)
+ }
+\]
+because
+\(d_{\gamma^{-1}}d_\gamma
+=\gamma^{-i\lambda}\gamma^{i\lambda}=1\).
+
+\paragraph{Extension and status.}
+Radial scaling preserves \(\widetilde{\mathcal E}\), and the dilations are
+isometries, so the identities extend uniquely by density. Under the paper's
+weight normalization,
+\(\Phi_\delta U_\gamma^{\pm1}\Phi_\delta^{-1}
+=D_{\gamma^{\pm1}}\); no scalar remains. For \(\gamma\ne1\), the first
+formula is an exact factorized representation and does not assert
+\(a_\gamma d_{\gamma^{-1}}\in\widetilde{\mathcal E}\).

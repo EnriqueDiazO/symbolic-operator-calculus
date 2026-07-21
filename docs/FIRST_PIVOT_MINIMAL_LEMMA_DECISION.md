@@ -70,9 +70,12 @@ For every pair
   compactness and identified symbol class.
 - **Sources:** KKL2014TwoShifts, Lemma 2.7 and Theorem 5.2, only as unproved
   weighted adaptations.
-- **Established:** the four full right cores are exact AST products.
+- **Established:** the four full right cores are exact AST products, and all
+  four prefixes through \(Q_1R_1B_1\) are controlled modulo compacts as two
+  standard and two right-factorized Mellin PDOs.
 - **Formal:** the four patterns account for the recurring core of all 16 terms.
-- **Open:** P-01 through P-08.
+- **Open:** identification and right composition of \(W_{1,2}^{+}\), followed
+  by the total compact residue and resulting symbol.
 - **Would cover:** the complete right core in all 16 terms.
 - **Risk:** bundling three unrelated missing interfaces and hiding the first
   failed hypothesis.
@@ -97,39 +100,39 @@ decision: NONE
 confidence: high
 blocking_obligations:
   - "P-01"
-  - "P-04"
+  - "P-05"
 evidence:
   - "phase-q:exact-right-dilation-definition-proof"
   - "phase-q:certified-Ghat1-semiproduct"
+  - "phase-r:four-left-cores-mod-compact"
   - "paper:normalized-wh-blocks-section-six"
   - "KKL2014TwoShifts:3.3"
   - "KKL2014TwoShifts:4.4"
   - "Karlovich2025Cusps:3.3"
-rationale: "The two H1 cases now have separate certified relations, but the exact factorized U1 output has no proved closed admissible calculus. H2 and H3 also require an unproved identification of the localized Wplus_12."
-prerequisite_statement: "Prove the minimum closure properties needed for the factorized pair (r1,d_gamma1), without forcing it into E-tilde; independently identify Wplus_12 before attempting H2."
+rationale: "All four prefixes before Wplus_12 now have certified standard or right-factorized representations modulo compacts. H2 and H3 still require identification of Wplus_12 and a proved right-composition rule."
+prerequisite_statement: "Identify Wplus_12 in a compatible operator class, then control its right composition with each of the four already reduced left cores."
 ```
 
 ## Selected statement
 
-The selected option remains **NONE**. Consequently, no uniform H1/H2/H3
-equality-plus-compact statement is promoted to a lemma after Phase Q.
+The selected option remains **NONE**. Consequently, no complete H1/H2/H3
+equality-plus-compact statement is promoted to a lemma after Phase R.
 
 The next statement to formulate and prove is a prerequisite, not a disguised
 version of H1:
 
-> Prove just the closure properties actually needed for the ordered factorized
-> pair \((r_1,d_{\gamma_1})\), without forcing its pointwise product into
-> \(\widetilde{\mathcal E}\). Independently identify \(W_{1,2}^{+}\) before
-> attempting H2.
+> Identify \(W_{1,2}^{+}\) in a class compatible with both standard and
+> right-factorized Mellin outputs, then prove its ordered composition on the
+> right of each of the four already reduced prefixes.
 
-The exact \(R_1U_1\) composition itself is no longer open, and the coefficient
-semiproduct is no longer merely plausible. What remains open is the common
-closure framework required by H1 and every longer word.
+The exact \(R_1U_1\) composition, coefficient semiproduct, left Cauchy action,
+and inverse-dilation covariance are no longer open. What remains common to all
+four words is the right composition with \(W_{1,2}^{+}\).
 
 ## Mathematical status and impact
 
-Confidence remains **high** because the two resolved cases are now recorded at
-their distinct logical strengths, while the uniform closure antecedent is
+Confidence remains **high** because all four prefixes are now recorded at
+their exact logical and class strengths, while the Wiener--Hopf antecedent is
 still absent. The four words and their occurrence in the 16 terms are formally
 certified. None of those 16 complete terms thereby acquires Mellin-PDO
 membership, cusp-algebra membership, an identified final symbol, or a compact
@@ -143,4 +146,6 @@ Phase P selected `NONE` because \(R_1U_1\) had no proved ordered composition
 rule and the coefficient case was only a specialization to prove. Phase Q
 discharges precisely those two short calculations. It does not retroactively
 claim that Phase P had proved them, and it does not modify the Phase P finding
-that \(W_{1,2}^{+}\) is unidentified.
+that \(W_{1,2}^{+}\) is unidentified. Phase R then discharges the action of
+both exterior \(Q_1\) choices before that factor, without studying the factor
+itself.

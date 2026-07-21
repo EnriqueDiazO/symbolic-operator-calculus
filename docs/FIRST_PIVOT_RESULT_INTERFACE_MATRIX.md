@@ -8,8 +8,8 @@ modulo-compact relation into an exact equality.
 
 | Interface | Candidate result | Required hypotheses | Verified | Missing | Status |
 |---|---|---|---|---|---|
-| $P^\pm \times R_1$ | KKL2014TwoShifts Lemma 2.7 | weighted conjugated commutation in the paper's space | P^pm are exact Mellin convolution factors | source theorem is unweighted and concerns the Cauchy algebra | `NO_RULE` |
-| $U_1^{-1}P^+ \times R_1$ | KKL2014TwoShifts Lemma 2.7 and Theorem 5.2 | weighted ordered rule including the exterior dilation | the factor order is represented exactly | no source result covers this weighted ordered triple | `BLOCKED` |
+| $P^\pm \times R_1$ | KKL2014TwoShifts Theorem 3.3 | p^pm and r1 belong to E on the conjugated space | all memberships, space transport, and factor order are verified | the result has only mod-compact strength | `CERTIFIED_MOD_COMPACT` |
+| $U_1^{-1}P^+ \times R_1$ | Phase R exact left covariance after Theorem 3.3 | Cauchy semiproduct and x/gamma radial scaling invariance | factorized d_(gamma^-1) representation is proved | no standard E-tilde membership is claimed for the full product | `CERTIFIED_MOD_COMPACT` |
 | $R_1 \times U_1$ | exact ordered factorized pair (r1,d_gamma1) | paper Mellin quantization and normalized dilation definitions | direct dense-core derivation and bounded extension | membership and closure of the provisional factorized class | `CERTIFIED_EXACT` |
 | $R_1 \times \widehat G_1$ | KKL2014TwoShifts Theorem 3.3 | r1 and the lambda-independent Ghat1 symbol belong to E | both symbols are in E-tilde after the paper's Phi_delta conjugation | no exact identity is asserted; the theorem gives a compact residue | `CERTIFIED_MOD_COMPACT` |
 | $U_1 \times W_{1,2}^{+}$ | KKL2014TwoShifts Lemmas 4.4--4.5 | Wplus_12 is the source operator R_y after all transports | both kernels have fixed-singularity structure | kernels, cutoff, weight, and branch maps are different | `ANALOGY_ONLY` |
@@ -58,8 +58,9 @@ modulo-compact relation into an exact equality.
 
 ## Matrix conclusion
 
-Phase Q certifies the two short products at different strengths:
+Phase Q certifies the two central products at different strengths:
 \(R_1U_1\) has an exact factorized representation, while
 \(R_1\widehat G_1\) has a standard Mellin representation modulo compact
-operators. This does not yet yield one admissible H1 class. Every row containing
-\(W_{1,2}^{+}\) remains either analogy-only or blocked.
+operators. Phase R additionally certifies the left Cauchy semiproduct and the
+exterior inverse dilation, retaining a factorized output where necessary.
+Every row containing \(W_{1,2}^{+}\) remains either analogy-only or blocked.

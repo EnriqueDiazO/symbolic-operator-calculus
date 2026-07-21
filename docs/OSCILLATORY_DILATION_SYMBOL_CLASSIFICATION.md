@@ -79,11 +79,12 @@ algebra or a norm-closed class. The following facts alone are established:
   isometry of \(D_\gamma\);
 - none of this implies \(a d_\gamma\in\widetilde{\mathcal E}\).
 
-The public trace records seven open obligations: sums with distinct
-frequencies, products of factorized elements, left composition by a dilation,
-involution, a Fredholm symbol, norm closure, and later interaction with
-localized Wiener--Hopf factors. The last item is recorded only as a future
-obligation and is not studied in Phase Q.
+Phase Q originally recorded seven open obligations. Phase R discharges the
+specific left-composition obligation by exact covariance. Six remain: sums
+with distinct frequencies, products of factorized elements, involution, a
+Fredholm symbol, norm closure, and later interaction with localized
+Wiener--Hopf factors. The last item remains only a future obligation and is not
+studied in either calculation.
 
 ## Proven damping lemma
 
