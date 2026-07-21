@@ -13,6 +13,10 @@ from .conditional import ConditionalIdentity
 from .derivations import FirstSchurDerivationTrace
 from .domains import AssumptionContext, ComplexDomain, DomainRegionKind
 from .kernels import KernelCombination
+from .normalized_schur import (
+    NormalizedFirstSchurPivotDerivation,
+    NormalizedModCompactFactorization,
+)
 from .operators import (
     G1,
     G2,
@@ -36,15 +40,31 @@ from .singularities import SingularSet
 
 
 OPERATOR_LATEX: dict[str, str] = {
+    "A11_inverse": r"A_{1,1}^{(-1)}",
+    "A12": r"A_{1,2}",
+    "A21": r"A_{2,1}",
+    "A22": r"A_{2,2}",
+    "A22_first": r"A_{2,2}^{(1)}",
     "G1": r"G_{1}\,I",
     "G2": r"G_{2}\,I",
     "I": r"I",
+    "N2": r"N_{2}",
+    "N2_first": r"N_{2}^{(1)}",
+    "P_minus": r"P^{-}",
+    "P_plus": r"P^{+}",
+    "R1": r"R_{1}",
     "R11": r"R_{1,1}",
     "S_Rplus": r"S_{\mathbb R_+}",
+    "T1_minus": r"T_{1,-}",
+    "T2_minus": r"T_{2,-}",
+    "U1_inverse": r"U_{1}^{-1}",
+    "U2_inverse": r"U_{2}^{-1}",
     "Vtilde_alpha1": r"\widetilde V_{\alpha_1}",
     "Vtilde_alpha2": r"\widetilde V_{\alpha_2}",
     "Wminus_21": r"W^-_{2,1}",
     "Wplus_12": r"W^+_{1,2}",
+    "Z1_inverse": r"Z_{1}^{-1}",
+    "Z2_inverse": r"Z_{2}^{-1}",
 }
 
 SCALAR_FUNCTION_LATEX: dict[str, str] = {
@@ -260,6 +280,29 @@ class RenderedFirstSchurDerivation:
 
 
 @dataclass(frozen=True)
+class RenderedNormalizedFirstSchurPivot:
+    """Ordered LaTeX presentation of the normalized first-pivot trace."""
+
+    steps: tuple[RenderedDerivationStep, ...]
+
+    def __post_init__(self) -> None:
+        if not self.steps or not all(
+            isinstance(step, RenderedDerivationStep) for step in self.steps
+        ):
+            raise LatexRenderingError(
+                "steps must contain rendered normalized-pivot steps."
+            )
+        keys = tuple(step.key for step in self.steps)
+        if len(set(keys)) != len(keys):
+            raise LatexRenderingError("rendered step keys must be unique.")
+
+    def as_latex(self) -> str:
+        """Concatenate formulas without adding document-level markup."""
+
+        return "\n\n".join(step.latex for step in self.steps)
+
+
+@dataclass(frozen=True)
 class RenderedRelativeWienerHopfTrace:
     """Ordered LaTeX presentation of one exact relative-WH trace."""
 
@@ -390,6 +433,200 @@ def render_linear_combination_latex(combination: LinearCombination) -> str:
         else:
             pieces.append(rf" - {body}" if sign == -1 else rf" + {body}")
     return "".join(pieces) if pieces else "0"
+
+
+def render_normalized_first_schur_pivot_exact_latex(
+    trace: NormalizedFirstSchurPivotDerivation,
+) -> str:
+    """Render the final exact formal identity in noncommutative order."""
+
+    if not isinstance(trace, NormalizedFirstSchurPivotDerivation):
+        raise TypeError("trace must be a NormalizedFirstSchurPivotDerivation.")
+    return (
+        f"{_render_normalized_endpoint_latex(trace.exact_result.left)} = "
+        f"{_render_normalized_endpoint_latex(trace.exact_result.right)}"
+    )
+
+
+def render_normalized_first_schur_pivot_mod_compact_latex(
+    trace: NormalizedFirstSchurPivotDerivation,
+    *,
+    expand_differences: bool = False,
+) -> str:
+    """Render the factorized or controlled four-term modulo-compact result."""
+
+    if not isinstance(trace, NormalizedFirstSchurPivotDerivation):
+        raise TypeError("trace must be a NormalizedFirstSchurPivotDerivation.")
+    if not isinstance(expand_differences, bool):
+        raise TypeError("expand_differences must be a bool.")
+    right = (
+        _render_normalized_endpoint_latex(trace.expanded_mod_compact_result)
+        if expand_differences
+        else _render_normalized_mod_compact_factorization_latex(
+            trace.mod_compact_factorization
+        )
+    )
+    return (
+        f"{_render_normalized_endpoint_latex(trace.mod_compact_result.left)} "
+        rf"\simeq {right}"
+    )
+
+
+def render_normalized_first_schur_pivot_latex(
+    trace: NormalizedFirstSchurPivotDerivation,
+) -> RenderedNormalizedFirstSchurPivot:
+    """Render every algebraic step of the normalized-pivot trace."""
+
+    if not isinstance(trace, NormalizedFirstSchurPivotDerivation):
+        raise TypeError("trace must be a NormalizedFirstSchurPivotDerivation.")
+    factorization = trace.mod_compact_factorization
+    left_relation, right_relation = trace.offdiagonal_relations
+    left_model = (
+        r"- \left("
+        + _render_normalized_endpoint_latex(factorization.left_difference)
+        + r"\right)\,"
+        + _render_normalized_atom_latex(factorization.left_wiener_hopf)
+    )
+    right_model = (
+        r"\left("
+        + _render_normalized_endpoint_latex(factorization.right_difference)
+        + r"\right)\,"
+        + _render_normalized_atom_latex(factorization.right_wiener_hopf)
+    )
+    steps = (
+        _normalized_relation_step(
+            "reduced_definition",
+            "Exact first Schur pivot definition",
+            trace.reduced_definition.left,
+            "=",
+            trace.reduced_definition.right,
+        ),
+        _normalized_relation_step(
+            "pivot_definition",
+            "Exact normalized pivot definition",
+            trace.pivot_definition.left,
+            "=",
+            trace.pivot_definition.right,
+        ),
+        _normalized_relation_step(
+            "normalized_expansion",
+            "Ordered normalization and distribution",
+            trace.normalized_expansion.left,
+            "=",
+            trace.normalized_expansion.right,
+        ),
+        _normalized_relation_step(
+            "inverse_substitution",
+            "Formal inverse substitution",
+            trace.inverse_substitution.left,
+            r"\overset{\mathrm{formal}}{=}",
+            trace.inverse_substitution.right,
+        ),
+        _normalized_relation_step(
+            "diagonal_recognition",
+            "Exact recognition of the diagonal term",
+            trace.diagonal_recognition.left,
+            "=",
+            trace.diagonal_recognition.right,
+        ),
+        RenderedDerivationStep(
+            "exact_result",
+            "Final exact formal identity",
+            render_normalized_first_schur_pivot_exact_latex(trace),
+        ),
+        RenderedDerivationStep(
+            "offdiagonal_models",
+            "Supplied off-diagonal equivalences modulo compact operators",
+            r"\begin{aligned}"
+            + _render_exact_block_latex(left_relation.exact)
+            + rf" &\simeq {left_model} \\ "
+            + _render_exact_block_latex(right_relation.exact)
+            + rf" &\simeq {right_model}"
+            + r"\end{aligned}",
+        ),
+        RenderedDerivationStep(
+            "mod_compact_result",
+            "Factorized equivalence modulo compact operators",
+            render_normalized_first_schur_pivot_mod_compact_latex(trace),
+        ),
+        RenderedDerivationStep(
+            "controlled_expansion",
+            "Controlled expansion of the two differences",
+            render_normalized_first_schur_pivot_mod_compact_latex(
+                trace,
+                expand_differences=True,
+            ),
+        ),
+    )
+    return RenderedNormalizedFirstSchurPivot(steps)
+
+
+def _normalized_relation_step(
+    key: str,
+    title: str,
+    left: object,
+    relation_symbol: str,
+    right: object,
+) -> RenderedDerivationStep:
+    return RenderedDerivationStep(
+        key,
+        title,
+        f"{_render_normalized_endpoint_latex(left)} {relation_symbol} "
+        f"{_render_normalized_endpoint_latex(right)}",
+    )
+
+
+def _render_normalized_endpoint_latex(value: object) -> str:
+    if isinstance(value, OperatorAtom):
+        return _render_normalized_atom_latex(value)
+    if isinstance(value, Product):
+        return r"\,".join(
+            _render_normalized_atom_latex(atom) for atom in value.factors
+        ) or "I"
+    if isinstance(value, LinearCombination):
+        pieces: list[str] = []
+        for index, term in enumerate(value.terms):
+            sign, magnitude = _coefficient_sign_and_magnitude(term.coefficient)
+            body = r"\,".join(
+                _render_normalized_atom_latex(atom)
+                for atom in term.product.factors
+            ) or "I"
+            coefficient = _coefficient_magnitude_latex(magnitude)
+            if coefficient != "1":
+                body = rf"{coefficient}\,{body}"
+            if index == 0:
+                pieces.append(("- " if sign == -1 else "") + body)
+            else:
+                pieces.append((" - " if sign == -1 else " + ") + body)
+        return "".join(pieces) if pieces else "0"
+    raise LatexRenderingError(
+        f"unsupported normalized-pivot endpoint {type(value).__name__}."
+    )
+
+
+def _render_normalized_atom_latex(atom: OperatorAtom) -> str:
+    if atom is G1:
+        return r"G_{1}"
+    if atom is G2:
+        return r"G_{2}"
+    return render_operator_atom_latex(atom)
+
+
+def _render_normalized_mod_compact_factorization_latex(
+    factorization: NormalizedModCompactFactorization,
+) -> str:
+    prefix = _render_normalized_endpoint_latex(factorization.prefix)
+    left = _render_normalized_endpoint_latex(factorization.left_difference)
+    left_wh = _render_normalized_atom_latex(factorization.left_wiener_hopf)
+    bridge = _render_normalized_endpoint_latex(factorization.bridge)
+    right = _render_normalized_endpoint_latex(factorization.right_difference)
+    right_wh = _render_normalized_atom_latex(factorization.right_wiener_hopf)
+    suffix = _render_normalized_endpoint_latex(factorization.suffix)
+    return (
+        r"N_{2} + "
+        rf"{prefix}\,\left({left}\right)\,{left_wh}\,{bridge}\,"
+        rf"\left({right}\right)\,{right_wh}\,{suffix}"
+    )
 
 
 def render_scalar_latex(

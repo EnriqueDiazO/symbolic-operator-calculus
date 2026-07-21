@@ -366,6 +366,38 @@ def expand_ordered(expression: Factor) -> LinearCombination:
     raise TypeError(f"Unsupported expression type: {type(expression)!r}")
 
 
+def compose_ordered(*expressions: Factor) -> LinearCombination:
+    """Explicitly distribute and compose operator expressions in stored order.
+
+    The overloaded multiplication operators intentionally reject products
+    involving :class:`LinearCombination`.  This function is the opt-in path
+    for the finite distributive expansion needed by formal derivations.  It
+    never sorts, commutes, cancels, or combines terms.
+    """
+
+    result = LinearCombination((Term(1, Product(())),))
+    for expression in expressions:
+        if not isinstance(expression, (OperatorAtom, Product, LinearCombination)):
+            raise TypeError(
+                "compose_ordered expects operator expressions; got "
+                f"{type(expression).__name__}."
+            )
+        right = LinearCombination.from_factor(expression)
+        result = LinearCombination(
+            tuple(
+                Term(
+                    left_term.coefficient * right_term.coefficient,
+                    Product(
+                        left_term.product.factors + right_term.product.factors
+                    ),
+                )
+                for left_term in result.terms
+                for right_term in right.terms
+            )
+        )
+    return result
+
+
 Vtilde_alpha2 = OperatorAtom("Vtilde_alpha2")
 G2 = OperatorAtom("G2")
 Wminus_21 = OperatorAtom("Wminus_21")
@@ -375,6 +407,26 @@ G1 = OperatorAtom("G1")
 Wplus_12 = OperatorAtom("Wplus_12")
 I = OperatorAtom("I")  # noqa: E741 - mathematical identity operator
 S_Rplus = OperatorAtom("S_Rplus")
+
+# Atoms used by the normalized first-Schur-pivot derivation.  They remain
+# indivisible noncommutative symbols; the ``kind`` labels are descriptive and
+# do not prove membership in an operator class.
+Z1_inverse = OperatorAtom("Z1_inverse", kind="multiplication_operator")
+Z2_inverse = OperatorAtom("Z2_inverse", kind="multiplication_operator")
+A12 = OperatorAtom("A12", kind="exact_block")
+A21 = OperatorAtom("A21", kind="exact_block")
+A22 = OperatorAtom("A22", kind="exact_block")
+A11_inverse = OperatorAtom("A11_inverse", kind="formal_inverse")
+A22_first = OperatorAtom("A22_first", kind="formal_schur_pivot")
+T1_minus = OperatorAtom("T1_minus", kind="auxiliary_shift_operator")
+T2_minus = OperatorAtom("T2_minus", kind="auxiliary_shift_operator")
+U1_inverse = OperatorAtom("U1_inverse", kind="inverse_shift_operator")
+U2_inverse = OperatorAtom("U2_inverse", kind="inverse_shift_operator")
+P_plus = OperatorAtom("P_plus", kind="projection")
+P_minus = OperatorAtom("P_minus", kind="projection")
+R1 = OperatorAtom("R1", kind="formal_regularizer")
+N2 = OperatorAtom("N2", kind="normalized_pivot")
+N2_first = OperatorAtom("N2_first", kind="normalized_schur_pivot")
 
 
 def main_expression() -> LinearCombination:

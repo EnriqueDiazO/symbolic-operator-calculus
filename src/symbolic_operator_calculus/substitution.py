@@ -6,12 +6,88 @@ from collections.abc import Iterable, Sequence
 
 import sympy as sp
 
+from .operators import (
+    LinearCombination,
+    OperatorAtom,
+    OperatorExpression,
+    Product,
+    Term,
+)
+
 
 class SafeSubstitutionError(ValueError):
     """Raised when a safe free-variable substitution cannot be guaranteed."""
 
 
+class OperatorSubstitutionError(ValueError):
+    """Raised when an ordered operator substitution is structurally invalid."""
+
+
 DEFAULT_DUMMY_NAMES = ("y", "u", "v", "w", "z")
+
+
+def substitute_operator_subproduct(
+    expression: OperatorExpression,
+    target: OperatorAtom | Product,
+    replacement: OperatorExpression,
+) -> LinearCombination:
+    """Replace every non-overlapping ordered occurrence of ``target``.
+
+    Replacement is a purely formal, opt-in distributive operation on the
+    package's noncommutative AST.  Matches are contiguous and processed from
+    left to right.  The function performs no commutation, cancellation, or
+    analytic inference.
+    """
+
+    if not isinstance(expression, (OperatorAtom, Product, LinearCombination)):
+        raise OperatorSubstitutionError(
+            "expression must be an operator AST expression."
+        )
+    if not isinstance(target, (OperatorAtom, Product)):
+        raise OperatorSubstitutionError("target must be an OperatorAtom or Product.")
+    if not isinstance(
+        replacement,
+        (OperatorAtom, Product, LinearCombination),
+    ):
+        raise OperatorSubstitutionError(
+            "replacement must be an operator AST expression."
+        )
+
+    target_product = Product.from_factor(target)
+    if not target_product.factors:
+        raise OperatorSubstitutionError("target must not be the empty product.")
+    replacement_combination = LinearCombination.from_factor(replacement)
+    source = LinearCombination.from_factor(expression)
+    substituted_terms: list[Term] = []
+    for source_term in source.terms:
+        pieces: list[tuple[object, tuple[OperatorAtom, ...]]] = [
+            (source_term.coefficient, ())
+        ]
+        factors = source_term.product.factors
+        index = 0
+        while index < len(factors):
+            target_factors = target_product.factors
+            if factors[index : index + len(target_factors)] == target_factors:
+                pieces = [
+                    (
+                        coefficient * replacement_term.coefficient,
+                        prefix + replacement_term.product.factors,
+                    )
+                    for coefficient, prefix in pieces
+                    for replacement_term in replacement_combination.terms
+                ]
+                index += len(target_factors)
+            else:
+                pieces = [
+                    (coefficient, prefix + (factors[index],))
+                    for coefficient, prefix in pieces
+                ]
+                index += 1
+        substituted_terms.extend(
+            Term(coefficient, Product(product_factors))
+            for coefficient, product_factors in pieces
+        )
+    return LinearCombination(tuple(substituted_terms))
 
 
 def collect_bound_symbols(expression: sp.Expr) -> set[sp.Symbol]:
