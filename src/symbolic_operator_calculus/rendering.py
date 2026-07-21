@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 from dataclasses import dataclass
 from fractions import Fraction
 
@@ -15,6 +16,14 @@ from .correction_analysis import (
     AuxiliaryGroupedTerm,
     CompleteCorrectionExpansionTrace,
     CorrectionTermRecord,
+)
+from .closure_analysis import (
+    ClosureProofObligation,
+    ClosureResultInterfaceRow,
+    ClosureWordRecord,
+    EvidenceReference,
+    FirstPivotClosureAnalysis,
+    MinimalClosureDecision,
 )
 from .derivations import FirstSchurDerivationTrace
 from .domains import AssumptionContext, ComplexDomain, DomainRegionKind
@@ -441,6 +450,209 @@ def render_product_latex(product: Product) -> str:
         return render_operator_atom_latex(I)
     return r"\,".join(
         _render_operator_product_factor_latex(atom) for atom in product.factors
+    )
+
+
+def _yaml_scalar(value: str) -> str:
+    return json.dumps(value, ensure_ascii=False)
+
+
+def _yaml_string_list(values: tuple[str, ...], indent: int) -> list[str]:
+    prefix = " " * indent
+    return [f"{prefix}- {_yaml_scalar(value)}" for value in values]
+
+
+def render_closure_evidence_manifest_yaml(
+    records: tuple[EvidenceReference, ...],
+) -> str:
+    """Render source records without embedding any filesystem paths."""
+
+    lines = ["schema_version: 1", "records:"]
+    for record in records:
+        lines.extend(
+            (
+                f"  - bibkey: {_yaml_scalar(record.bibkey)}",
+                f"    result_type: {_yaml_scalar(record.result_type)}",
+                f"    number: {_yaml_scalar(record.number)}",
+                f"    status: {_yaml_scalar(record.status)}",
+                "    printed_pages:",
+            )
+        )
+        lines.extend(_yaml_string_list(record.printed_pages, 6))
+        lines.append(
+            "    pdf_pages: [" + ", ".join(str(page) for page in record.pdf_pages) + "]"
+        )
+        lines.extend(
+            (
+                f"    source_checksum: {_yaml_scalar(record.source_checksum)}",
+                "    application_kind: "
+                f"{_yaml_scalar(record.application_kind.value)}",
+                "    hypotheses_used:",
+            )
+        )
+        lines.extend(_yaml_string_list(record.hypotheses_used, 6))
+        lines.extend(
+            (
+                f"    conclusion_used: {_yaml_scalar(record.conclusion_used)}",
+                "    limitations:",
+            )
+        )
+        lines.extend(_yaml_string_list(record.limitations, 6))
+    return "\n".join(lines) + "\n"
+
+
+def render_closure_obligations_yaml(
+    obligations: tuple[ClosureProofObligation, ...],
+) -> str:
+    """Render the ordered proof graph in a machine-readable YAML subset."""
+
+    lines = ["schema_version: 1", "obligations:"]
+    for item in obligations:
+        lines.extend(
+            (
+                f"  - id: {_yaml_scalar(item.identifier)}",
+                f"    statement: {_yaml_scalar(item.statement)}",
+                "    depends_on:",
+            )
+        )
+        if item.depends_on:
+            lines.extend(_yaml_string_list(item.depends_on, 6))
+        else:
+            lines[-1] = "    depends_on: []"
+        lines.append("    sources:")
+        if item.sources:
+            lines.extend(_yaml_string_list(item.sources, 6))
+        else:
+            lines[-1] = "    sources: []"
+        lines.extend(
+            (
+                "    factors_affected:",
+                *(
+                    f"      - {_yaml_scalar(factor.name)}"
+                    for factor in item.factors_affected
+                ),
+                f"    status: {_yaml_scalar(item.status.value)}",
+                f"    evidence_required: {_yaml_scalar(item.evidence_required)}",
+                f"    blocking_effect: {_yaml_scalar(item.blocking_effect)}",
+                f"    closure_criterion: {_yaml_scalar(item.closure_criterion)}",
+            )
+        )
+    return "\n".join(lines) + "\n"
+
+
+def _markdown_table_text(value: str) -> str:
+    escaped = r"\|".join(value.split("|"))
+    return " ".join(escaped.splitlines())
+
+
+def render_closure_words_markdown(words: tuple[ClosureWordRecord, ...]) -> str:
+    """Render the four AST words and their typed signatures."""
+
+    lines = [
+        "| ID | Ordered AST product | Domain → codomain | Open obligations |",
+        "|---|---|---|---|",
+    ]
+    for word in words:
+        classes = ", ".join(
+            f"{item.position}:{item.operator_class.value}" for item in word.signature
+        )
+        lines.append(
+            f"| `{word.identifier}` | ${render_product_latex(word.product)}$<br>"
+            f"`{_markdown_table_text(classes)}` | {_markdown_table_text(word.domain)} → "
+            f"{_markdown_table_text(word.codomain)} | {', '.join(word.obligation_ids)} |"
+        )
+    return "\n".join(lines) + "\n"
+
+
+def render_closure_words_latex(words: tuple[ClosureWordRecord, ...]) -> str:
+    """Render exactly the four stored products as aligned definitions."""
+
+    definitions = [
+        rf"{word.latex_label} &:= {render_product_latex(word.product)}"
+        for word in words
+    ]
+    return "\\[\n\\begin{aligned}\n" + " \\\\\n".join(definitions) + "\n\\end{aligned}\n\\]\n"
+
+
+def render_closure_interface_matrix_markdown(
+    rows: tuple[ClosureResultInterfaceRow, ...],
+) -> str:
+    """Render the global result-by-interface matrix without changing statuses."""
+
+    lines = [
+        "| Interface | Candidate result | Required hypotheses | Verified | Missing | Status |",
+        "|---|---|---|---|---|---|",
+    ]
+    for row in rows:
+        lines.append(
+            f"| ${row.interface}$ | {_markdown_table_text(row.candidate_result)} | "
+            f"{_markdown_table_text('; '.join(row.required_hypotheses))} | "
+            f"{_markdown_table_text('; '.join(row.verified_hypotheses))} | "
+            f"{_markdown_table_text('; '.join(row.missing_hypotheses))} | "
+            f"`{row.status.value}` |"
+        )
+    return "\n".join(lines) + "\n"
+
+
+def render_closure_graph_markdown(
+    obligations: tuple[ClosureProofObligation, ...],
+) -> str:
+    """Render a Mermaid dependency graph plus a status table."""
+
+    lines = ["```mermaid", "flowchart TD"]
+    for item in obligations:
+        label = f"{item.identifier}: {item.status.value}"
+        item_node = "_".join(item.identifier.split("-"))
+        lines.append(f"    {item_node}[{_yaml_scalar(label)}]")
+        for dependency in item.depends_on:
+            dependency_node = "_".join(dependency.split("-"))
+            lines.append(f"    {dependency_node} --> {item_node}")
+    lines.extend(
+        (
+            "```",
+            "",
+            "| ID | Statement | Status | Closure criterion |",
+            "|---|---|---|---|",
+        )
+    )
+    for item in obligations:
+        lines.append(
+            f"| `{item.identifier}` | {_markdown_table_text(item.statement)} | "
+            f"`{item.status.value}` | "
+            f"{_markdown_table_text(item.closure_criterion)} |"
+        )
+    return "\n".join(lines) + "\n"
+
+
+def render_minimal_closure_decision_yaml(decision: MinimalClosureDecision) -> str:
+    """Render the unique H1/H2/H3/NONE decision with its blockers."""
+
+    lines = [
+        f"decision: {decision.decision.value}",
+        f"confidence: {decision.confidence.value}",
+        "blocking_obligations:",
+        *_yaml_string_list(decision.blocking_obligations, 2),
+        "evidence:",
+        *_yaml_string_list(decision.evidence, 2),
+        f"rationale: {_yaml_scalar(decision.rationale)}",
+        f"prerequisite_statement: {_yaml_scalar(decision.prerequisite_statement)}",
+    ]
+    return "\n".join(lines) + "\n"
+
+
+def render_first_pivot_closure_summary_markdown(
+    analysis: FirstPivotClosureAnalysis,
+) -> str:
+    """Render a compact deterministic summary suitable for a notebook."""
+
+    decision = render_minimal_closure_decision_yaml(analysis.decision)
+    return (
+        render_closure_words_markdown(analysis.words)
+        + "\n"
+        + render_closure_interface_matrix_markdown(analysis.interface_matrix)
+        + "\n```yaml\n"
+        + decision
+        + "```\n"
     )
 
 

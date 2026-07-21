@@ -272,7 +272,12 @@ class CompleteCorrectionExpansionTrace:
         return (1, len(self.c1.terms), len(self.c2), len(self.c3.terms))
 
 
-def _factor_signature(position: int, factor: OperatorAtom) -> FactorSignature:
+def build_factor_signature(position: int, factor: OperatorAtom) -> FactorSignature:
+    """Build declarative metadata for one existing AST factor.
+
+    The returned class and relation labels are annotations only. They do not
+    establish analytic membership or discharge any proof obligation.
+    """
     if factor in (Z1_inverse, Z2_inverse):
         operator_class = TermOperatorClass.MULTIPLICATION_OPERATOR
     elif factor in (Ghat1, Ghat2):
@@ -539,7 +544,7 @@ def detect_open_interfaces(product: Product) -> tuple[OpenOperatorInterface, ...
 def _term_record(index: int, term: Term) -> CorrectionTermRecord:
     identifier = f"C2-T{index:02d}"
     signature = tuple(
-        _factor_signature(position, factor)
+        build_factor_signature(position, factor)
         for position, factor in enumerate(term.product.factors, start=1)
     )
     interfaces = detect_open_interfaces(term.product)
