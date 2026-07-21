@@ -11,6 +11,11 @@ from sympy.printing.latex import LatexPrinter
 from .actions import AppliedLinearCombination, PrincipalValue
 from .conditional import ConditionalIdentity
 from .complete_correction import CompleteCorrectionDerivation
+from .correction_analysis import (
+    AuxiliaryGroupedTerm,
+    CompleteCorrectionExpansionTrace,
+    CorrectionTermRecord,
+)
 from .derivations import FirstSchurDerivationTrace
 from .domains import AssumptionContext, ComplexDomain, DomainRegionKind
 from .kernels import KernelCombination
@@ -564,6 +569,194 @@ def render_complete_correction_derivation_latex(
         ),
     )
     return RenderedCompleteCorrectionDerivation(steps)
+
+
+def render_complete_correction_expansion_latex(
+    trace: CompleteCorrectionExpansionTrace,
+    level: str,
+) -> str:
+    """Render one of C0, C1, C2, or C3 without changing its structure."""
+
+    if not isinstance(trace, CompleteCorrectionExpansionTrace):
+        raise TypeError("trace must be a CompleteCorrectionExpansionTrace.")
+    if level == "C0":
+        return (
+            r"\mathcal C_{2}^{\mathrm{norm}} = "
+            + _render_grouped_correction_factorization_latex(trace.c0)
+        )
+    if level == "C1":
+        return (
+            r"\mathcal C_{2}^{\mathrm{norm}} = "
+            + _render_normalized_endpoint_latex(trace.c1)
+        )
+    if level == "C2":
+        lines = tuple(
+            _render_auxiliary_grouped_term_latex(item) for item in trace.c2
+        )
+        return (
+            r"\begin{aligned}\mathcal C_{2}^{\mathrm{norm}} &={}& "
+            + lines[0]
+            + r" \\ "
+            + r" \\ ".join("&&{}+ " + line for line in lines[1:])
+            + r"\end{aligned}"
+        )
+    if level == "C3":
+        lines: list[str] = []
+        for index, record in enumerate(trace.terms):
+            sign, magnitude = _coefficient_sign_and_magnitude(record.coefficient)
+            product = _render_normalized_endpoint_latex(record.term.product)
+            coefficient = _coefficient_magnitude_latex(magnitude)
+            body = product if coefficient == "1" else rf"{coefficient}\,{product}"
+            prefix = "- " if sign == -1 else ("" if index == 0 else "+ ")
+            if index > 0 and sign == -1:
+                prefix = "- "
+            lines.append(
+                prefix
+                + rf"\underbrace{{{body}}}_{{\mathrm{{{record.identifier}}}}}"
+            )
+        return (
+            r"\begin{aligned}\mathcal C_{2}^{\mathrm{norm}} &={}& "
+            + lines[0]
+            + r" \\ "
+            + r" \\ ".join(rf"&&{line}" for line in lines[1:])
+            + r"\end{aligned}"
+        )
+    raise ValueError("level must be one of C0, C1, C2, or C3.")
+
+
+def render_correction_term_catalog_markdown(
+    trace: CompleteCorrectionExpansionTrace,
+) -> str:
+    """Render all 16 annotated terms as a deterministic Markdown table."""
+
+    if not isinstance(trace, CompleteCorrectionExpansionTrace):
+        raise TypeError("trace must be a CompleteCorrectionExpansionTrace.")
+    lines = [
+        "| ID | Signo | Factores ordenados | Firma | Motifs | Interfaces abiertas |",
+        "|---|---:|---|---|---|---|",
+    ]
+    lines.extend(_term_catalog_markdown_row(record) for record in trace.terms)
+    return "\n".join(lines)
+
+
+def render_correction_term_catalog_latex(
+    trace: CompleteCorrectionExpansionTrace,
+) -> str:
+    """Render the term catalog as a reusable longtable fragment."""
+
+    if not isinstance(trace, CompleteCorrectionExpansionTrace):
+        raise TypeError("trace must be a CompleteCorrectionExpansionTrace.")
+    rows = "\n".join(_term_catalog_latex_row(record) for record in trace.terms)
+    return (
+        r"\begin{longtable}{@{}rclp{0.23\linewidth}p{0.18\linewidth}p{0.20\linewidth}@{}}"
+        "\n"
+        r"\textbf{ID} & \textbf{Signo} & \textbf{Factores ordenados} & "
+        r"\textbf{Firma} & \textbf{Motifs} & \textbf{Interfaces abiertas} \\"
+        "\n"
+        r"\hline"
+        "\n"
+        f"{rows}\n"
+        r"\end{longtable}"
+        "\n"
+    )
+
+
+def render_correction_motif_frequency_markdown(
+    trace: CompleteCorrectionExpansionTrace,
+) -> str:
+    if not isinstance(trace, CompleteCorrectionExpansionTrace):
+        raise TypeError("trace must be a CompleteCorrectionExpansionTrace.")
+    lines = [
+        "| Motif | Estado | Frecuencia |",
+        "|---|---|---:|",
+    ]
+    lines.extend(
+        f"| `{item.name}` | {item.status.value} | {item.count} |"
+        for item in trace.motif_frequency
+    )
+    return "\n".join(lines)
+
+
+def render_correction_interface_matrix_markdown(
+    trace: CompleteCorrectionExpansionTrace,
+) -> str:
+    if not isinstance(trace, CompleteCorrectionExpansionTrace):
+        raise TypeError("trace must be a CompleteCorrectionExpansionTrace.")
+    lines = [
+        "| Interfaz | Nº de términos | Regla existente | Fuente | Estado |",
+        "|---|---:|---|---|---|",
+    ]
+    lines.extend(
+        f"| {row.interface} | {row.term_count} | {row.existing_rule} | "
+        f"{row.source} | {row.status.value} |"
+        for row in trace.interface_matrix
+    )
+    return "\n".join(lines)
+
+
+def _render_grouped_correction_factorization_latex(factorization: object) -> str:
+    left = _render_normalized_endpoint_latex(factorization.left_difference)
+    left_wh = _render_normalized_atom_latex(factorization.left_wiener_hopf)
+    bridge = _render_normalized_endpoint_latex(factorization.bridge)
+    right = _render_normalized_endpoint_latex(factorization.right_difference)
+    right_wh = _render_normalized_atom_latex(factorization.right_wiener_hopf)
+    suffix = _render_normalized_endpoint_latex(factorization.suffix)
+    return (
+        rf"\left({left}\right)\,{left_wh}\,{bridge}\,"
+        rf"\left({right}\right)\,{right_wh}\,{suffix}"
+    )
+
+
+def _render_auxiliary_grouped_term_latex(term: AuxiliaryGroupedTerm) -> str:
+    return _render_grouped_correction_factorization_latex(term.factorization)
+
+
+def _signature_text(record: CorrectionTermRecord) -> str:
+    return " → ".join(
+        f"{item.position}:{item.factor.name}[{item.operator_class.value};"
+        f"branch={item.branch};polarity={item.polarity};"
+        f"{item.relation_kind.value}]"
+        for item in record.signature
+    )
+
+
+def _motifs_text(record: CorrectionTermRecord) -> str:
+    return ", ".join(
+        f"{item.name} ({item.status.value})" for item in record.motifs
+    )
+
+
+def _interfaces_text(record: CorrectionTermRecord) -> str:
+    return ", ".join(
+        f"{item.category}: {item.left.name}→{item.right.name} ({item.status.value})"
+        for item in record.open_interfaces
+    )
+
+
+def _term_catalog_markdown_row(record: CorrectionTermRecord) -> str:
+    sign = "+" if record.coefficient == 1 else "-"
+    factors = r"\(" + _render_normalized_endpoint_latex(record.term.product) + r"\)"
+    return (
+        f"| {record.identifier} | {sign} | {factors} | {_signature_text(record)} | "
+        f"{_motifs_text(record)} | {_interfaces_text(record)} |"
+    )
+
+
+def _tex_escape_text(value: str) -> str:
+    substitutions = {"_": r"\_", "×": r"$\times$"}
+    return "".join(substitutions.get(character, character) for character in value)
+
+
+def _term_catalog_latex_row(record: CorrectionTermRecord) -> str:
+    sign = "+" if record.coefficient == 1 else "-"
+    product = _render_normalized_endpoint_latex(record.term.product)
+    signature = _tex_escape_text(_signature_text(record))
+    motifs = _tex_escape_text(_motifs_text(record))
+    interfaces = _tex_escape_text(_interfaces_text(record))
+    return (
+        rf"{record.identifier} & ${sign}$ & ${product}$ & {signature} & "
+        rf"{motifs} & {interfaces} \\"
+    )
 
 
 def render_normalized_first_schur_pivot_mod_compact_latex(
