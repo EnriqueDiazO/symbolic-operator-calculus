@@ -39,12 +39,122 @@ class KernelRepresentationStatus(str, Enum):
     EXTERNALLY_CERTIFIED = "externally_certified"
 
 
+class DerivationRelationKind(str, Enum):
+    """Semantic role of one recorded formal-derivation step."""
+
+    EXACT_EQUALITY = "EXACT_EQUALITY"
+    MOD_COMPACT_EQUIVALENCE = "MOD_COMPACT_EQUIVALENCE"
+    FORMAL_SUBSTITUTION = "FORMAL_SUBSTITUTION"
+    ANALYTIC_PROOF_OBLIGATION = "ANALYTIC_PROOF_OBLIGATION"
+
+
+class OperatorClass(str, Enum):
+    """Caller-supplied operator-class label; never an inferred membership."""
+
+    MULTIPLICATION_OPERATOR = "MultiplicationOperator"
+    MULTIPLICATION_DILATION = "Multiplication × Dilation"
+    LOCALIZED_WIENER_HOPF_OPERATOR = "LocalizedWienerHopfOperator"
+    AUXILIARY_SHIFT_OPERATOR = "AuxiliaryShiftOperator"
+    MELLIN_PDO_REGULARIZER = "MellinPDORegularizer"
+
+
+class FactorStatus(str, Enum):
+    """Declared mathematical status shown in factor classifications."""
+
+    EXACT = "exacto"
+    MOD_COMPACT = "módulo compactos"
+    INVERTIBLE = "invertible"
+    REGULARIZER_MOD_COMPACT = "regularizador módulo compactos"
+
+
 class ExactIdentityRequiredError(TypeError):
     """Raised when a non-exact semantic relation is used as an exact one."""
 
 
 class KernelRepresentationRequiredError(ValueError):
     """Raised when a formal regularizer is projected to a kernel implicitly."""
+
+
+def _require_nonempty_text(value: object, field_name: str) -> str:
+    if not isinstance(value, str):
+        raise TypeError(f"{field_name} must be a non-empty str.")
+    if not value.strip():
+        raise ValueError(f"{field_name} must be a non-empty str.")
+    return value
+
+
+@dataclass(frozen=True)
+class SemanticDerivationStep:
+    """One typed step whose payload is recorded without proving it."""
+
+    key: str
+    relation_kind: DerivationRelationKind
+    payload: object
+    justification: object | None = None
+
+    def __post_init__(self) -> None:
+        object.__setattr__(
+            self,
+            "key",
+            _require_nonempty_text(self.key, "SemanticDerivationStep.key"),
+        )
+        if not isinstance(self.relation_kind, DerivationRelationKind):
+            raise TypeError("relation_kind must be a DerivationRelationKind.")
+        if self.payload is None:
+            raise ValueError("SemanticDerivationStep.payload must be supplied.")
+
+
+@dataclass(frozen=True)
+class FactorClassification:
+    """Explicit factor metadata with no automatic membership inference."""
+
+    factor: object
+    operator_class: OperatorClass
+    status: FactorStatus
+    mathematical_source: str
+
+    def __post_init__(self) -> None:
+        if self.factor is None:
+            raise ValueError("FactorClassification.factor must be supplied.")
+        if not isinstance(self.operator_class, OperatorClass):
+            raise TypeError("operator_class must be an OperatorClass.")
+        if not isinstance(self.status, FactorStatus):
+            raise TypeError("status must be a FactorStatus.")
+        object.__setattr__(
+            self,
+            "mathematical_source",
+            _require_nonempty_text(
+                self.mathematical_source,
+                "FactorClassification.mathematical_source",
+            ),
+        )
+
+
+@dataclass(frozen=True)
+class AnalyticProofObligation:
+    """A pending analytic task; construction never discharges it."""
+
+    key: str
+    statement: str
+    relation_kind: DerivationRelationKind = field(
+        default=DerivationRelationKind.ANALYTIC_PROOF_OBLIGATION,
+        init=False,
+    )
+
+    def __post_init__(self) -> None:
+        object.__setattr__(
+            self,
+            "key",
+            _require_nonempty_text(self.key, "AnalyticProofObligation.key"),
+        )
+        object.__setattr__(
+            self,
+            "statement",
+            _require_nonempty_text(
+                self.statement,
+                "AnalyticProofObligation.statement",
+            ),
+        )
 
 
 @final

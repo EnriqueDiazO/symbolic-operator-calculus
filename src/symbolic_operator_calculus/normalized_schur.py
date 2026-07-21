@@ -42,10 +42,16 @@ from .operators import (
 )
 from .relations import ModCompactRelation
 from .semantics import (
+    AnalyticProofObligation,
+    DerivationRelationKind,
     ExactIdentity,
     ExactIdentityScope,
+    FactorClassification,
+    FactorStatus,
     FormalIdentity,
     ModCompactEquivalence,
+    OperatorClass,
+    SemanticDerivationStep,
 )
 from .substitution import substitute_operator_subproduct
 
@@ -117,6 +123,9 @@ class NormalizedFirstSchurPivotDerivation:
     offdiagonal_relations: tuple[ModCompactRelation, ModCompactRelation]
     mod_compact_result: ModCompactEquivalence
     mod_compact_factorization: NormalizedModCompactFactorization
+    semantic_steps: tuple[SemanticDerivationStep, ...]
+    factor_classifications: tuple[FactorClassification, ...]
+    proof_obligations: tuple[AnalyticProofObligation, ...]
 
     def __post_init__(self) -> None:
         exact_relations = (
@@ -145,6 +154,25 @@ class NormalizedFirstSchurPivotDerivation:
         ):
             raise TypeError(
                 "mod_compact_factorization must be normalized factorization metadata."
+            )
+        if not self.semantic_steps or not all(
+            isinstance(item, SemanticDerivationStep)
+            for item in self.semantic_steps
+        ):
+            raise TypeError("semantic_steps must contain SemanticDerivationStep objects.")
+        if not self.factor_classifications or not all(
+            isinstance(item, FactorClassification)
+            for item in self.factor_classifications
+        ):
+            raise TypeError(
+                "factor_classifications must contain FactorClassification objects."
+            )
+        if not self.proof_obligations or not all(
+            isinstance(item, AnalyticProofObligation)
+            for item in self.proof_obligations
+        ):
+            raise TypeError(
+                "proof_obligations must contain AnalyticProofObligation objects."
             )
         expanded_terms = self.mod_compact_result.right.terms
         correction = LinearCombination(expanded_terms[1:])
@@ -245,6 +273,108 @@ def factor_normalized_mod_compact_correction() -> NormalizedModCompactFactorizat
     )
 
 
+def normalized_first_schur_factor_classifications(
+) -> tuple[FactorClassification, ...]:
+    """Return the requested factor table as explicit caller-supplied metadata."""
+
+    return (
+        FactorClassification(
+            Z2_inverse,
+            OperatorClass.MULTIPLICATION_OPERATOR,
+            FactorStatus.EXACT,
+            "definición del transporte",
+        ),
+        FactorClassification(
+            Vtilde_alpha2,
+            OperatorClass.MULTIPLICATION_DILATION,
+            FactorStatus.EXACT,
+            "transporte del shift",
+        ),
+        FactorClassification(
+            G2,
+            OperatorClass.MULTIPLICATION_OPERATOR,
+            FactorStatus.EXACT,
+            "coeficiente branchwise",
+        ),
+        FactorClassification(
+            Wminus_21,
+            OperatorClass.LOCALIZED_WIENER_HOPF_OPERATOR,
+            FactorStatus.MOD_COMPACT,
+            "localización cuspídea 2025",
+        ),
+        FactorClassification(
+            T1_minus,
+            OperatorClass.AUXILIARY_SHIFT_OPERATOR,
+            FactorStatus.INVERTIBLE,
+            "resultado branchwise",
+        ),
+        FactorClassification(
+            R1,
+            OperatorClass.MELLIN_PDO_REGULARIZER,
+            FactorStatus.REGULARIZER_MOD_COMPACT,
+            "KKL 2014, Thm. 5.8",
+        ),
+        FactorClassification(
+            Z1_inverse,
+            OperatorClass.MULTIPLICATION_OPERATOR,
+            FactorStatus.EXACT,
+            "normalización diagonal",
+        ),
+        FactorClassification(
+            Vtilde_alpha1,
+            OperatorClass.MULTIPLICATION_DILATION,
+            FactorStatus.EXACT,
+            "transporte del shift",
+        ),
+        FactorClassification(
+            G1,
+            OperatorClass.MULTIPLICATION_OPERATOR,
+            FactorStatus.EXACT,
+            "coeficiente branchwise",
+        ),
+        FactorClassification(
+            Wplus_12,
+            OperatorClass.LOCALIZED_WIENER_HOPF_OPERATOR,
+            FactorStatus.MOD_COMPACT,
+            "localización cuspídea 2025",
+        ),
+        FactorClassification(
+            T2_minus,
+            OperatorClass.AUXILIARY_SHIFT_OPERATOR,
+            FactorStatus.INVERTIBLE,
+            "resultado branchwise",
+        ),
+    )
+
+
+def normalized_first_schur_proof_obligations(
+) -> tuple[AnalyticProofObligation, ...]:
+    """Return the analytic questions deliberately left open by this phase."""
+
+    return (
+        AnalyticProofObligation(
+            "justify_wh_mod_compact",
+            "Justificar la sustitución Wiener--Hopf módulo compactos.",
+        ),
+        AnalyticProofObligation(
+            "classify_complete_correction",
+            "Demostrar que la corrección completa pertenece a una álgebra cerrada apropiada.",
+        ),
+        AnalyticProofObligation(
+            "prove_product_closure",
+            "Demostrar cierre bajo los productos que aparecen.",
+        ),
+        AnalyticProofObligation(
+            "choose_analytic_framework",
+            "Decidir si la salida es un Mellin PDO admisible o un elemento de la álgebra cuspídea de 2025.",
+        ),
+        AnalyticProofObligation(
+            "apply_fredholm_criterion_later",
+            "Aplicar después un criterio de Fredholmness, sin afirmar aún su conclusión.",
+        ),
+    )
+
+
 def build_normalized_first_schur_pivot_derivation(
 ) -> NormalizedFirstSchurPivotDerivation:
     """Build the complete formal and modulo-compact normalized-pivot trace."""
@@ -259,54 +389,120 @@ def build_normalized_first_schur_pivot_derivation(
     inverse_word = T1_minus * R1 * Z1_inverse
     left_relation = a21_mod_compact_relation()
     right_relation = a12_mod_compact_relation()
+    reduced_definition = ExactIdentity(
+        left=A22_first,
+        right=reduced_expression,
+        evidence="definition of the first Schur pivot",
+        scope=ExactIdentityScope.STRUCTURAL,
+    )
+    pivot_definition = ExactIdentity(
+        left=N2_first,
+        right=pivot_word,
+        evidence="definition of normalized first Schur pivot",
+        scope=ExactIdentityScope.STRUCTURAL,
+    )
+    normalized_expansion = ExactIdentity(
+        left=pivot_word,
+        right=normalized_expression,
+        evidence="finite distributivity in the ordered operator AST",
+        scope=ExactIdentityScope.STRUCTURAL,
+    )
+    inverse_substitution = FormalIdentity(
+        left=normalized_expression,
+        right=with_regularizer,
+        justification=FormalIdentity(
+            left=A11_inverse,
+            right=inverse_word,
+            justification="supplied formal regularizer identity",
+        ),
+    )
+    diagonal_recognition = ExactIdentity(
+        left=diagonal_word,
+        right=N2,
+        evidence="supplied definition of N2",
+        scope=ExactIdentityScope.STRUCTURAL,
+    )
+    exact_result = ExactIdentity(
+        left=N2_first,
+        right=exact_expression,
+        evidence="ordered formal substitution and diagonal recognition",
+        scope=ExactIdentityScope.STRUCTURAL,
+        hypotheses=(
+            "A11^(-1) = T1,- R1 Z1^(-1)",
+            "Z2^(-1) A22 T2,- = N2",
+        ),
+    )
+    mod_compact_result = ModCompactEquivalence(
+        left=N2_first,
+        right=mod_compact_expression,
+    )
+    proof_obligations = normalized_first_schur_proof_obligations()
+    semantic_steps = (
+        SemanticDerivationStep(
+            "reduced_definition",
+            DerivationRelationKind.EXACT_EQUALITY,
+            reduced_definition,
+        ),
+        SemanticDerivationStep(
+            "pivot_definition",
+            DerivationRelationKind.EXACT_EQUALITY,
+            pivot_definition,
+        ),
+        SemanticDerivationStep(
+            "normalized_expansion",
+            DerivationRelationKind.EXACT_EQUALITY,
+            normalized_expansion,
+        ),
+        SemanticDerivationStep(
+            "inverse_substitution",
+            DerivationRelationKind.FORMAL_SUBSTITUTION,
+            inverse_substitution,
+        ),
+        SemanticDerivationStep(
+            "diagonal_recognition",
+            DerivationRelationKind.EXACT_EQUALITY,
+            diagonal_recognition,
+        ),
+        SemanticDerivationStep(
+            "exact_result",
+            DerivationRelationKind.EXACT_EQUALITY,
+            exact_result,
+        ),
+        SemanticDerivationStep(
+            "a21_mod_compact",
+            DerivationRelationKind.MOD_COMPACT_EQUIVALENCE,
+            left_relation.semantic_relation,
+        ),
+        SemanticDerivationStep(
+            "a12_mod_compact",
+            DerivationRelationKind.MOD_COMPACT_EQUIVALENCE,
+            right_relation.semantic_relation,
+        ),
+        SemanticDerivationStep(
+            "normalized_mod_compact_result",
+            DerivationRelationKind.MOD_COMPACT_EQUIVALENCE,
+            mod_compact_result,
+        ),
+        *(
+            SemanticDerivationStep(
+                obligation.key,
+                obligation.relation_kind,
+                obligation,
+            )
+            for obligation in proof_obligations
+        ),
+    )
     return NormalizedFirstSchurPivotDerivation(
-        reduced_definition=ExactIdentity(
-            left=A22_first,
-            right=reduced_expression,
-            evidence="definition of the first Schur pivot",
-            scope=ExactIdentityScope.STRUCTURAL,
-        ),
-        pivot_definition=ExactIdentity(
-            left=N2_first,
-            right=pivot_word,
-            evidence="definition of normalized first Schur pivot",
-            scope=ExactIdentityScope.STRUCTURAL,
-        ),
-        normalized_expansion=ExactIdentity(
-            left=pivot_word,
-            right=normalized_expression,
-            evidence="finite distributivity in the ordered operator AST",
-            scope=ExactIdentityScope.STRUCTURAL,
-        ),
-        inverse_substitution=FormalIdentity(
-            left=normalized_expression,
-            right=with_regularizer,
-            justification=FormalIdentity(
-                left=A11_inverse,
-                right=inverse_word,
-                justification="supplied formal regularizer identity",
-            ),
-        ),
-        diagonal_recognition=ExactIdentity(
-            left=diagonal_word,
-            right=N2,
-            evidence="supplied definition of N2",
-            scope=ExactIdentityScope.STRUCTURAL,
-        ),
-        exact_result=ExactIdentity(
-            left=N2_first,
-            right=exact_expression,
-            evidence="ordered formal substitution and diagonal recognition",
-            scope=ExactIdentityScope.STRUCTURAL,
-            hypotheses=(
-                "A11^(-1) = T1,- R1 Z1^(-1)",
-                "Z2^(-1) A22 T2,- = N2",
-            ),
-        ),
+        reduced_definition=reduced_definition,
+        pivot_definition=pivot_definition,
+        normalized_expansion=normalized_expansion,
+        inverse_substitution=inverse_substitution,
+        diagonal_recognition=diagonal_recognition,
+        exact_result=exact_result,
         offdiagonal_relations=(left_relation, right_relation),
-        mod_compact_result=ModCompactEquivalence(
-            left=N2_first,
-            right=mod_compact_expression,
-        ),
+        mod_compact_result=mod_compact_result,
         mod_compact_factorization=factor_normalized_mod_compact_correction(),
+        semantic_steps=semantic_steps,
+        factor_classifications=normalized_first_schur_factor_classifications(),
+        proof_obligations=proof_obligations,
     )
