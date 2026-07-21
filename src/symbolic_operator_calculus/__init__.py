@@ -122,7 +122,11 @@ from .domains import (
     InvalidDomainError,
     MembershipStatus,
 )
-from .exporting import export_first_schur_derivation_tex
+from .exporting import (
+    export_first_schur_derivation_tex,
+    export_normalized_first_schur_pivot_tex,
+    normalized_first_schur_pivot_tex_fragment,
+)
 from .kernels import (
     FirstSchurCorrectionFactorization,
     KernelCombination,
@@ -287,6 +291,8 @@ from .rendering import (
     render_normalized_first_schur_pivot_exact_latex,
     render_normalized_first_schur_pivot_latex,
     render_normalized_first_schur_pivot_mod_compact_latex,
+    render_normalized_factor_classification_markdown,
+    render_normalized_proof_obligations_markdown,
     render_operator_atom_latex,
     render_product_latex,
     render_relative_wiener_hopf_trace_latex,
@@ -471,6 +477,7 @@ __all__ = [
     "detect_singularities",
     "expand_ordered",
     "export_first_schur_derivation_tex",
+    "export_normalized_first_schur_pivot_tex",
     "extract_applied_kernels",
     "extract_integral_kernel",
     "factor_first_schur_correction",
@@ -496,6 +503,7 @@ __all__ = [
     "m2_relative_wiener_hopf_factorizations",
     "mvp_atomic_rules",
     "negative_inverse_integral",
+    "normalized_first_schur_pivot_tex_fragment",
     "positive_decay_symbol",
     "positive_inverse_integral",
     "scaled_convolution_kernel",
@@ -571,6 +579,8 @@ __all__ = [
     "render_normalized_first_schur_pivot_exact_latex",
     "render_normalized_first_schur_pivot_latex",
     "render_normalized_first_schur_pivot_mod_compact_latex",
+    "render_normalized_factor_classification_markdown",
+    "render_normalized_proof_obligations_markdown",
     "substitute_operator_subproduct",
     "t1_minus_expression",
     "t2_minus_expression",

@@ -1,0 +1,50 @@
+% Reusable fragment generated from symbolic_operator_calculus.
+% Requires the paper's standard amsmath support; defines no private macros.
+
+\subsection*{Definición del primer pivote de Schur normalizado}
+\[
+A_{2,2}^{(1)} = A_{2,2} - A_{2,1}\,A_{1,1}^{(-1)}\,A_{1,2}
+\]
+\[
+N_{2}^{(1)} = Z_{2}^{-1}\,A_{2,2}^{(1)}\,T_{2,-}
+\]
+
+\subsection*{Normalización ordenada}
+\[
+Z_{2}^{-1}\,A_{2,2}^{(1)}\,T_{2,-} = Z_{2}^{-1}\,A_{2,2}\,T_{2,-} - Z_{2}^{-1}\,A_{2,1}\,A_{1,1}^{(-1)}\,A_{1,2}\,T_{2,-}
+\]
+
+\subsection*{Sustitución formal del regularizador}
+\[
+A_{1,1}^{(-1)} \overset{\mathrm{formal}}{=} T_{1,-}\,R_{1}\,Z_{1}^{-1}
+\]
+\[
+Z_{2}^{-1}\,A_{2,2}\,T_{2,-} - Z_{2}^{-1}\,A_{2,1}\,A_{1,1}^{(-1)}\,A_{1,2}\,T_{2,-} \overset{\mathrm{formal}}{=} Z_{2}^{-1}\,A_{2,2}\,T_{2,-} - Z_{2}^{-1}\,A_{2,1}\,T_{1,-}\,R_{1}\,Z_{1}^{-1}\,A_{1,2}\,T_{2,-}
+\]
+\[
+Z_{2}^{-1}\,A_{2,2}\,T_{2,-} = N_{2}
+\]
+
+\subsection*{Identidad formal exacta}
+\[
+N_{2}^{(1)} = N_{2} - Z_{2}^{-1}\,A_{2,1}\,T_{1,-}\,R_{1}\,Z_{1}^{-1}\,A_{1,2}\,T_{2,-}
+\]
+
+\subsection*{Equivalencia módulo compactos}
+\[
+N_{2}^{(1)} \simeq N_{2} + Z_{2}^{-1}\,\left(\widetilde V_{\alpha_2} - G_{2}\right)\,W^-_{2,1}\,T_{1,-}\,R_{1}\,Z_{1}^{-1}\,\left(\widetilde V_{\alpha_1} - G_{1}\right)\,W^+_{1,2}\,T_{2,-}
+\]
+
+\subsection*{Expansión controlada}
+\[
+N_{2}^{(1)} \simeq N_{2} + Z_{2}^{-1}\,\widetilde V_{\alpha_2}\,W^-_{2,1}\,T_{1,-}\,R_{1}\,Z_{1}^{-1}\,\widetilde V_{\alpha_1}\,W^+_{1,2}\,T_{2,-} - Z_{2}^{-1}\,\widetilde V_{\alpha_2}\,W^-_{2,1}\,T_{1,-}\,R_{1}\,Z_{1}^{-1}\,G_{1}\,W^+_{1,2}\,T_{2,-} - Z_{2}^{-1}\,G_{2}\,W^-_{2,1}\,T_{1,-}\,R_{1}\,Z_{1}^{-1}\,\widetilde V_{\alpha_1}\,W^+_{1,2}\,T_{2,-} + Z_{2}^{-1}\,G_{2}\,W^-_{2,1}\,T_{1,-}\,R_{1}\,Z_{1}^{-1}\,G_{1}\,W^+_{1,2}\,T_{2,-}
+\]
+
+\subsection*{Obligaciones analíticas pendientes}
+\begin{enumerate}
+\item Justificar la sustitución Wiener--Hopf módulo compactos.
+\item Demostrar que la corrección completa pertenece a una álgebra cerrada apropiada.
+\item Demostrar cierre bajo los productos que aparecen.
+\item Decidir si la salida es un Mellin PDO admisible o un elemento de la álgebra cuspídea de 2025.
+\item Aplicar después un criterio de Fredholmness, sin afirmar aún su conclusión.
+\end{enumerate}

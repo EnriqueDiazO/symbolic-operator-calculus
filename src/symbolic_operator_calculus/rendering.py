@@ -284,6 +284,7 @@ class RenderedNormalizedFirstSchurPivot:
     """Ordered LaTeX presentation of the normalized first-pivot trace."""
 
     steps: tuple[RenderedDerivationStep, ...]
+    proof_obligations: tuple[str, ...]
 
     def __post_init__(self) -> None:
         if not self.steps or not all(
@@ -295,6 +296,13 @@ class RenderedNormalizedFirstSchurPivot:
         keys = tuple(step.key for step in self.steps)
         if len(set(keys)) != len(keys):
             raise LatexRenderingError("rendered step keys must be unique.")
+        if not self.proof_obligations or not all(
+            isinstance(item, str) and item.strip()
+            for item in self.proof_obligations
+        ):
+            raise LatexRenderingError(
+                "proof_obligations must contain non-empty strings."
+            )
 
     def as_latex(self) -> str:
         """Concatenate formulas without adding document-level markup."""
@@ -481,6 +489,11 @@ def render_normalized_first_schur_pivot_latex(
         raise TypeError("trace must be a NormalizedFirstSchurPivotDerivation.")
     factorization = trace.mod_compact_factorization
     left_relation, right_relation = trace.offdiagonal_relations
+    inverse_rule = trace.inverse_substitution.justification
+    if not isinstance(inverse_rule, FormalIdentity):
+        raise LatexRenderingError(
+            "inverse substitution must retain its supplied formal rule."
+        )
     left_model = (
         r"- \left("
         + _render_normalized_endpoint_latex(factorization.left_difference)
@@ -514,6 +527,13 @@ def render_normalized_first_schur_pivot_latex(
             trace.normalized_expansion.left,
             "=",
             trace.normalized_expansion.right,
+        ),
+        _normalized_relation_step(
+            "inverse_rule",
+            "Supplied formal regularizer identity",
+            inverse_rule.left,
+            r"\overset{\mathrm{formal}}{=}",
+            inverse_rule.right,
         ),
         _normalized_relation_step(
             "inverse_substitution",
@@ -558,7 +578,49 @@ def render_normalized_first_schur_pivot_latex(
             ),
         ),
     )
-    return RenderedNormalizedFirstSchurPivot(steps)
+    return RenderedNormalizedFirstSchurPivot(
+        steps,
+        tuple(obligation.statement for obligation in trace.proof_obligations),
+    )
+
+
+def render_normalized_factor_classification_markdown(
+    trace: NormalizedFirstSchurPivotDerivation,
+) -> str:
+    """Render the trace's declarative factor classification as Markdown."""
+
+    if not isinstance(trace, NormalizedFirstSchurPivotDerivation):
+        raise TypeError("trace must be a NormalizedFirstSchurPivotDerivation.")
+    lines = [
+        "| Factor | Clase operatorial conocida | Estatus | Fuente matemática |",
+        "|---|---|---|---|",
+    ]
+    lines.extend(
+        "| $"
+        + _render_normalized_atom_latex(row.factor)
+        + "$ | "
+        + row.operator_class.value
+        + " | "
+        + row.status.value
+        + " | "
+        + row.mathematical_source
+        + " |"
+        for row in trace.factor_classifications
+    )
+    return "\n".join(lines)
+
+
+def render_normalized_proof_obligations_markdown(
+    trace: NormalizedFirstSchurPivotDerivation,
+) -> str:
+    """Render every still-pending analytic proof obligation."""
+
+    if not isinstance(trace, NormalizedFirstSchurPivotDerivation):
+        raise TypeError("trace must be a NormalizedFirstSchurPivotDerivation.")
+    return "\n".join(
+        f"{index}. {obligation.statement}"
+        for index, obligation in enumerate(trace.proof_obligations, start=1)
+    )
 
 
 def _normalized_relation_step(

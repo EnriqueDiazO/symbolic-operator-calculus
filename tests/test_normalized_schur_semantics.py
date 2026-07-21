@@ -21,6 +21,8 @@ from symbolic_operator_calculus import (
     build_normalized_first_schur_pivot_derivation,
     normalized_first_schur_factor_classifications,
     normalized_first_schur_proof_obligations,
+    render_normalized_factor_classification_markdown,
+    render_normalized_proof_obligations_markdown,
 )
 
 
@@ -171,6 +173,20 @@ def test_trace_reuses_deterministic_classifications_and_obligations():
     assert first.factor_classifications == second.factor_classifications
     assert first.proof_obligations == second.proof_obligations
     assert first.semantic_steps == second.semantic_steps
+
+
+def test_classification_and_obligation_markdown_are_trace_driven():
+    trace = build_normalized_first_schur_pivot_derivation()
+    table = render_normalized_factor_classification_markdown(trace)
+    obligations = render_normalized_proof_obligations_markdown(trace)
+
+    assert table.count("\n") == len(trace.factor_classifications) + 1
+    assert r"$Z_{2}^{-1}$ | MultiplicationOperator | exacto" in table
+    assert r"$R_{1}$ | MellinPDORegularizer" in table
+    assert r"$G_{1}$" in table and r"G_{1}\,I" not in table
+    assert obligations.count("\n") == len(trace.proof_obligations) - 1
+    assert obligations.startswith("1. Justificar")
+    assert obligations.endswith("sin afirmar aún su conclusión.")
 
 
 def test_semantic_metadata_validates_types_without_interpreting_evidence():
