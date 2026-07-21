@@ -393,7 +393,7 @@ class MinimalClosureDecision:
 
 @dataclass(frozen=True)
 class FirstPivotClosureAnalysis:
-    """Complete declarative output of Phase P."""
+    """Declarative Phase P output with later obligation-status updates."""
 
     evidence: tuple[EvidenceReference, ...]
     words: tuple[ClosureWordRecord, ...]
@@ -433,11 +433,13 @@ class FirstPivotClosureAnalysis:
             MinimalLemmaChoice.H3,
         ):
             raise ClosureAnalysisError("candidates must retain H1/H2/H3 order.")
-        if any(
-            item.status is ClosureObligationStatus.ANALYTICALLY_PROVED
+        proved = {
+            item.identifier
             for item in self.obligations
-        ):
-            raise ClosureAnalysisError("no Phase P obligation is analytically proved.")
+            if item.status is ClosureObligationStatus.ANALYTICALLY_PROVED
+        }
+        if not proved <= {"P-02", "P-03"}:
+            raise ClosureAnalysisError("only independently discharged nodes may be proved.")
 
 
 def _evidence(
@@ -888,19 +890,19 @@ def closure_result_interface_matrix() -> tuple[ClosureResultInterfaceRow, ...]:
         ),
         row(
             r"R_1 \times U_1",
-            "KKL2014TwoShifts Theorem 3.3 or a proved extended calculus",
-            ("both symbols belong to one composition calculus",),
-            ("R1 has the supplied E-tilde symbol",),
-            ("gamma1^(i lambda) is outside V when gamma1 is nontrivial",),
-            ClosureInterfaceStatus.BLOCKED,
+            "exact ordered factorized pair (r1,d_gamma1)",
+            ("paper Mellin quantization and normalized dilation definitions",),
+            ("direct dense-core derivation and bounded extension",),
+            ("membership and closure of the provisional factorized class",),
+            ClosureInterfaceStatus.CERTIFIED_EXACT,
         ),
         row(
             r"R_1 \times \widehat G_1",
             "KKL2014TwoShifts Theorem 3.3",
             ("r1 and the lambda-independent Ghat1 symbol belong to E",),
-            ("r1 is in E-tilde; Ghat1 is an SO multiplication coefficient",),
-            ("paper-to-source symbol-class specialization",),
-            ClosureInterfaceStatus.SPECIALIZATION_TO_PROVE,
+            ("both symbols are in E-tilde after the paper's Phi_delta conjugation",),
+            ("no exact identity is asserted; the theorem gives a compact residue",),
+            ClosureInterfaceStatus.CERTIFIED_MOD_COMPACT,
         ),
         row(
             r"U_1 \times W_{1,2}^{+}",
@@ -985,36 +987,39 @@ def closure_proof_obligations() -> tuple[ClosureProofObligation, ...]:
         ),
         node(
             "P-02",
-            "Represent U1 in a calculus compatible with the R1 semiproduct.",
+            "Represent U1 and prove the exact ordered factorized composition R1 U1.",
             (),
-            ("paper:mellin-representation-dilation-shift",),
-            (U1,),
-            ClosureObligationStatus.FORMALLY_REDUCED,
-            "a calculus containing the non-V multiplier gamma1^(i lambda)",
-            "blocks the U1 case of H1",
-            "a proved ordered composition rule for Op(r1) followed by U1",
+            (
+                "paper:mellin-representation-dilation-shift",
+                "phase-q:exact-right-dilation-definition-proof",
+            ),
+            (R1, U1),
+            ClosureObligationStatus.ANALYTICALLY_PROVED,
+            "direct dense-core derivation plus bounded extension",
+            "removes the composition-formula blocker, not standard-class membership",
+            "retain the exact ordered pair (r1,d_gamma1) without an E-tilde claim",
         ),
         node(
             "P-03",
-            "Represent Ghat1 as an admissible Mellin multiplication symbol.",
+            "Represent Ghat1 and certify the ordered R1 Ghat1 semiproduct.",
             (),
             ("paper:normalized-diagonal-symbol-admissible", "KKL2014TwoShifts:3.3"),
-            (Ghat1,),
-            ClosureObligationStatus.SOURCE_VERIFIED,
-            "match the paper's SO coefficient to the source E symbol hypothesis",
-            "blocks the Ghat1 specialization of H1 until recorded",
-            "prove the lambda-independent Ghat1 symbol belongs to E(R+,V(R))",
+            (R1, Ghat1),
+            ClosureObligationStatus.ANALYTICALLY_PROVED,
+            "paper membership proof plus every hypothesis of Theorem 3.3",
+            "discharges the coefficient case only, modulo compact operators",
+            "Op(r1)M_Ghat1 is Op(r1 Ghat1) modulo compact operators",
         ),
         node(
             "P-04",
-            "Apply a valid ordered semiproduct rule to R1 B1 for both B1 choices.",
+            "Place the separately controlled R1 U1 and R1 Ghat1 cases in one admissible H1 framework.",
             ("P-02", "P-03"),
             ("KKL2014TwoShifts:3.3", "KKL2014TwoShifts:3.4"),
             (R1, U1, Ghat1),
             ClosureObligationStatus.BLOCKED,
-            "factor-by-factor symbol membership and composition proof",
+            "U1 case: provisional-class closure; Ghat1 case: already certified mod compact",
             "blocks uniform H1 and every longer candidate",
-            "produce an identified symbol class and compact remainder for both B1",
+            "one named admissible framework covering both relations at their proved strengths",
         ),
         node(
             "P-05",
@@ -1121,12 +1126,14 @@ def closure_lemma_candidates() -> tuple[ClosureLemmaCandidate, ...]:
             ("KKL2014TwoShifts:3.3", "KKL2014TwoShifts:3.4"),
             (
                 "R1 is a Mellin PDO",
-                "Ghat1 is an SO multiplication coefficient under the paper hypothesis",
+                "R1 U1 has an exact ordered factorized representation",
+                "R1 Ghat1 has a certified mod-compact semiproduct",
             ),
             ("the ordered products occur unchanged in all 16 terms",),
             (
                 "U1 has multiplier gamma1^(i lambda), outside V when nontrivial",
-                "no uniform admissible class for both B1 choices is identified",
+                "the factorized U1 output has no proved closed calculus",
+                "no uniform admissible framework for both B1 choices is identified",
             ),
             16,
             "A false E-class assertion for the U1 case would invalidate the lemma.",
@@ -1176,28 +1183,29 @@ def closure_lemma_candidates() -> tuple[ClosureLemmaCandidate, ...]:
 
 
 def minimal_closure_decision() -> MinimalClosureDecision:
-    """Select NONE until the prerequisite dilation closure is formulated."""
+    """Retain NONE until the factorized output and Wplus_12 are controlled."""
 
     return MinimalClosureDecision(
         decision=MinimalLemmaChoice.NONE,
         confidence=DecisionConfidence.HIGH,
-        blocking_obligations=("P-01", "P-02", "P-04"),
+        blocking_obligations=("P-01", "P-04"),
         evidence=(
-            "paper:dilation-symbol-not-in-V",
+            "phase-q:exact-right-dilation-definition-proof",
+            "phase-q:certified-Ghat1-semiproduct",
             "paper:normalized-wh-blocks-section-six",
             "KKL2014TwoShifts:3.3",
             "KKL2014TwoShifts:4.4",
             "Karlovich2025Cusps:3.3",
         ),
         rationale=(
-            "H1 is not uniformly formulable in the verified E calculus because the "
-            "nontrivial U1 multiplier is outside V; H2 and H3 additionally require "
-            "an unproved Mellin or cusp identification of the localized Wplus_12."
+            "The two H1 cases now have separate certified relations, but the exact "
+            "factorized U1 output has no proved closed admissible calculus. H2 and H3 "
+            "also require an unproved identification of the localized Wplus_12."
         ),
         prerequisite_statement=(
-            "First define and prove an ordered right-dilation closure rule for "
-            "Op(r1)U1 in an explicit calculus containing gamma1^(i lambda), while "
-            "separately recording the already plausible Ghat1 specialization."
+            "Prove the minimum closure properties needed for the factorized pair "
+            "(r1,d_gamma1), without forcing it into E-tilde; independently identify "
+            "Wplus_12 before attempting H2."
         ),
     )
 

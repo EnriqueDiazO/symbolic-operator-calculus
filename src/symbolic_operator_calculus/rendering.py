@@ -44,6 +44,10 @@ from .operators import (
 )
 from .relations import ExactBlock, FirstSchurReduction
 from .relative_wiener_hopf import RelativeWienerHopfDerivationTrace
+from .right_dilation import (
+    CoefficientSemiproductTrace,
+    RightDilationCompositionTrace,
+)
 from .semantics import (
     ApproximateEquality,
     ExactIdentity,
@@ -450,6 +454,41 @@ def render_product_latex(product: Product) -> str:
         return render_operator_atom_latex(I)
     return r"\,".join(
         _render_operator_product_factor_latex(atom) for atom in product.factors
+    )
+
+
+def render_right_dilation_composition_latex(
+    trace: RightDilationCompositionTrace,
+) -> str:
+    """Render the exact Phase Q identity without asserting standard membership."""
+
+    if not isinstance(trace, RightDilationCompositionTrace):
+        raise TypeError("trace must be a RightDilationCompositionTrace.")
+    product = render_product_latex(trace.ast_product)
+    return (
+        rf"{product}"
+        rf"\overset{{\mathrm{{exact}}}}{{=}}"
+        rf"\Phi_\delta^{{-1}}"
+        rf"\operatorname{{Op}}_{{\mathrm{{right}}\text{{-}}\gamma_1}}"
+        rf"\!\left(r_1,d_{{\gamma_1}}\right)\Phi_\delta"
+        rf"\quad[d_{{\gamma_1}}(\lambda)=\gamma_1^{{i\lambda}};\ "
+        rf"r_1d_{{\gamma_1}}\in\widetilde{{\mathcal E}}:\ "
+        rf"\text{{not demonstrated}}]"
+    )
+
+
+def render_coefficient_semiproduct_latex(
+    trace: CoefficientSemiproductTrace,
+) -> str:
+    """Render the separately certified coefficient semiproduct."""
+
+    if not isinstance(trace, CoefficientSemiproductTrace):
+        raise TypeError("trace must be a CoefficientSemiproductTrace.")
+    return (
+        r"\operatorname{Op}(r_1)M_{\widehat G_1}"
+        r"\simeq\operatorname{Op}(r_1\widehat G_1)"
+        r"\quad\bmod\mathcal K"
+        r"\quad[\mathrm{CERTIFIED\_MOD\_COMPACT}]"
     )
 
 
