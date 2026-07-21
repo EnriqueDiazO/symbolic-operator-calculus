@@ -1,16 +1,15 @@
 # First-pivot closure graph
 
-The nodes below are generated from the public Phase P API. An edge means that
+The nodes below are generated from the public closure API. An edge means that
 the source obligation must be discharged before the target can close. Status
-`SOURCE_VERIFIED` records supporting source evidence, and
-`FORMALLY_REDUCED` records a symbolic reduction; neither means an analytic
-proof. No node is `ANALYTICALLY_PROVED`.
+`ANALYTICALLY_PROVED` is used only for the two Phase Q results proved at their
+stated logical strength. It does not imply a common closed symbol calculus.
 
 ```mermaid
 flowchart TD
     P_01["P-01: BLOCKED"]
-    P_02["P-02: FORMALLY_REDUCED"]
-    P_03["P-03: SOURCE_VERIFIED"]
+    P_02["P-02: ANALYTICALLY_PROVED"]
+    P_03["P-03: ANALYTICALLY_PROVED"]
     P_04["P-04: BLOCKED"]
     P_02 --> P_04
     P_03 --> P_04
@@ -43,9 +42,9 @@ flowchart TD
 | ID | Statement | Status | Closure criterion |
 |---|---|---|---|
 | `P-01` | Identify Wplus_12 in a closure-compatible operator class. | `BLOCKED` | an exact or certified mod-compact class identification |
-| `P-02` | Represent U1 in a calculus compatible with the R1 semiproduct. | `FORMALLY_REDUCED` | a proved ordered composition rule for Op(r1) followed by U1 |
-| `P-03` | Represent Ghat1 as an admissible Mellin multiplication symbol. | `SOURCE_VERIFIED` | prove the lambda-independent Ghat1 symbol belongs to E(R+,V(R)) |
-| `P-04` | Apply a valid ordered semiproduct rule to R1 B1 for both B1 choices. | `BLOCKED` | produce an identified symbol class and compact remainder for both B1 |
+| `P-02` | Represent U1 and prove the exact ordered factorized composition R1 U1. | `ANALYTICALLY_PROVED` | retain the exact ordered pair (r1,d_gamma1) without an E-tilde claim |
+| `P-03` | Represent Ghat1 and certify the ordered R1 Ghat1 semiproduct. | `ANALYTICALLY_PROVED` | Op(r1)M_Ghat1 is Op(r1 Ghat1) modulo compact operators |
+| `P-04` | Place the separately controlled R1 U1 and R1 Ghat1 cases in one admissible H1 framework. | `BLOCKED` | one named admissible framework covering both relations at their proved strengths |
 | `P-05` | Control (R1 B1)Wplus_12 without reordering factors. | `BLOCKED` | derive a certified model for the ordered three-factor suffix |
 | `P-06` | Control Q1 before R1 B1 Wplus_12 without commuting it. | `BLOCKED` | preserve the stored order and produce a controlled remainder |
 | `P-07` | Prove compactness of every accumulated residue. | `BLOCKED` | all residuals lie in K(L^p(R_+,w_delta)) with branch typing |
@@ -56,6 +55,12 @@ flowchart TD
 | `P-12` | Only after membership, verify nonvanishing and Fredholmness conditions. | `BLOCKED` | all hypotheses of the chosen criterion are checked |
 
 ## Critical paths
+
+- Phase P originally left P-02 at `FORMALLY_REDUCED` and P-03 at
+  `SOURCE_VERIFIED`. Phase Q preserves that history and discharges the exact
+  factorized composition and coefficient semiproduct separately.
+- P-04 remains blocked: the first result is exact but factorized, whereas the
+  second is a standard Mellin semiproduct only modulo compact operators.
 
 - H1 depends on P-02, P-03, P-04, and P-07.
 - H2 additionally depends on P-01 and P-05.

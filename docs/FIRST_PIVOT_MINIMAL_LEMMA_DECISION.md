@@ -18,13 +18,14 @@ explicitly named admissible class such that
   both choices of \(B_1\) in the same verified calculus; an ordered
   semiproduct theorem; compactness of the residue.
 - **Sources:** KKL2014TwoShifts, Theorem 3.3 and Lemma 3.4.
-- **Established:** \(R_1\) has the supplied \(\widetilde{\mathcal E}\) symbol;
-  \(\widehat G_1\) is an \(SO\) multiplication coefficient under the paper
-  hypothesis.
+- **Established:** Phase Q proves the exact ordered factorized identity for
+  \(R_1U_1\), and certifies the \(R_1\widehat G_1\) semiproduct modulo
+  compact operators under the paper hypothesis.
 - **Formal:** the contiguous subword occurs without reordering in all 16
   correction terms.
-- **Open:** the nontrivial dilation multiplier is outside \(V\); no one
-  admissible class for both choices has been identified.
+- **Open:** the nontrivial dilation multiplier remains outside \(V\), the
+  factorized output has no proved closed calculus, and no one admissible
+  framework for both choices has been identified.
 - **Would cover:** the \(R_1B_1\) subword in all 16 terms, but not the following
   \(W_{1,2}^{+}\) or the exterior \(Q_1\).
 - **Risk:** an unjustified \(V\)-membership assertion for \(U_1\).
@@ -84,7 +85,7 @@ Status: `BLOCKED`.
 |---|---|---|---|---|
 | Appears in all 16 terms | yes | yes | yes | no discriminator |
 | Preserves factor order | yes | yes | yes | all are formally safe |
-| Has currently verifiable hypotheses | no, \(U_1\) case fails | no | no | no candidate is defensible now |
+| Has currently verifiable hypotheses | two separate short relations, but no uniform class | no | no | no candidate is defensible now |
 | Reduces the most obligations | local reduction | larger suffix | whole core | breadth cannot replace missing hypotheses |
 | Avoids a false identification | yes if class is enlarged and proved | no, currently depends on P-01 | no, inherits P-01 | excludes H2/H3 |
 | Does not anticipate Fredholmness | yes | yes | yes | all are scoped below P-12 |
@@ -96,40 +97,50 @@ decision: NONE
 confidence: high
 blocking_obligations:
   - "P-01"
-  - "P-02"
   - "P-04"
 evidence:
-  - "paper:dilation-symbol-not-in-V"
+  - "phase-q:exact-right-dilation-definition-proof"
+  - "phase-q:certified-Ghat1-semiproduct"
   - "paper:normalized-wh-blocks-section-six"
   - "KKL2014TwoShifts:3.3"
   - "KKL2014TwoShifts:4.4"
   - "Karlovich2025Cusps:3.3"
-rationale: "H1 is not uniformly formulable in the verified E calculus because the nontrivial U1 multiplier is outside V; H2 and H3 additionally require an unproved Mellin or cusp identification of the localized Wplus_12."
-prerequisite_statement: "First define and prove an ordered right-dilation closure rule for Op(r1)U1 in an explicit calculus containing gamma1^(i lambda), while separately recording the already plausible Ghat1 specialization."
+rationale: "The two H1 cases now have separate certified relations, but the exact factorized U1 output has no proved closed admissible calculus. H2 and H3 also require an unproved identification of the localized Wplus_12."
+prerequisite_statement: "Prove the minimum closure properties needed for the factorized pair (r1,d_gamma1), without forcing it into E-tilde; independently identify Wplus_12 before attempting H2."
 ```
 
 ## Selected statement
 
-The selected option is **NONE**. Consequently, no H1/H2/H3 equality-plus-compact
-statement is promoted to a lemma in Phase P.
+The selected option remains **NONE**. Consequently, no uniform H1/H2/H3
+equality-plus-compact statement is promoted to a lemma after Phase Q.
 
 The next statement to formulate and prove is a prerequisite, not a disguised
 version of H1:
 
-> Define an explicit calculus containing the nontrivial multiplier
-> \(\gamma_1^{i\lambda}\), then prove an ordered right-dilation composition rule
-> for \(\operatorname{Op}(r_1)U_1\), including the precise resulting class and
-> compact residue. Treat the \(\widehat G_1\) specialization separately.
+> Prove just the closure properties actually needed for the ordered factorized
+> pair \((r_1,d_{\gamma_1})\), without forcing its pointwise product into
+> \(\widetilde{\mathcal E}\). Independently identify \(W_{1,2}^{+}\) before
+> attempting H2.
 
-This wording does not assert that such a calculus already exists or that the
-residue is compact; both are the content of the requested future proof.
+The exact \(R_1U_1\) composition itself is no longer open, and the coefficient
+semiproduct is no longer merely plausible. What remains open is the common
+closure framework required by H1 and every longer word.
 
 ## Mathematical status and impact
 
-Confidence is **high** because the obstruction is an explicit failed source
-hypothesis, not merely absence of a convenient citation. The four words and
-their occurrence in the 16 terms are formally certified. None of those 16
-terms acquires Mellin-PDO membership, cusp-algebra membership, an identified
-symbol, or a compact remainder from this decision. Reconstruction of
+Confidence remains **high** because the two resolved cases are now recorded at
+their distinct logical strengths, while the uniform closure antecedent is
+still absent. The four words and their occurrence in the 16 terms are formally
+certified. None of those 16 complete terms thereby acquires Mellin-PDO
+membership, cusp-algebra membership, an identified final symbol, or a compact
+remainder. Reconstruction of
 \(\mathcal C_2\), membership of \(N_2^{(1)}\), and Fredholm analysis remain at
 P-10, P-11, and P-12 respectively.
+
+## Preserved history
+
+Phase P selected `NONE` because \(R_1U_1\) had no proved ordered composition
+rule and the coefficient case was only a specialization to prove. Phase Q
+discharges precisely those two short calculations. It does not retroactively
+claim that Phase P had proved them, and it does not modify the Phase P finding
+that \(W_{1,2}^{+}\) is unidentified.

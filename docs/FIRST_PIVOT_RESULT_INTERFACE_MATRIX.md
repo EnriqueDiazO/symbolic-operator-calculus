@@ -10,8 +10,8 @@ modulo-compact relation into an exact equality.
 |---|---|---|---|---|---|
 | $P^\pm \times R_1$ | KKL2014TwoShifts Lemma 2.7 | weighted conjugated commutation in the paper's space | P^pm are exact Mellin convolution factors | source theorem is unweighted and concerns the Cauchy algebra | `NO_RULE` |
 | $U_1^{-1}P^+ \times R_1$ | KKL2014TwoShifts Lemma 2.7 and Theorem 5.2 | weighted ordered rule including the exterior dilation | the factor order is represented exactly | no source result covers this weighted ordered triple | `BLOCKED` |
-| $R_1 \times U_1$ | KKL2014TwoShifts Theorem 3.3 or a proved extended calculus | both symbols belong to one composition calculus | R1 has the supplied E-tilde symbol | gamma1^(i lambda) is outside V when gamma1 is nontrivial | `BLOCKED` |
-| $R_1 \times \widehat G_1$ | KKL2014TwoShifts Theorem 3.3 | r1 and the lambda-independent Ghat1 symbol belong to E | r1 is in E-tilde; Ghat1 is an SO multiplication coefficient | paper-to-source symbol-class specialization | `SPECIALIZATION_TO_PROVE` |
+| $R_1 \times U_1$ | exact ordered factorized pair (r1,d_gamma1) | paper Mellin quantization and normalized dilation definitions | direct dense-core derivation and bounded extension | membership and closure of the provisional factorized class | `CERTIFIED_EXACT` |
+| $R_1 \times \widehat G_1$ | KKL2014TwoShifts Theorem 3.3 | r1 and the lambda-independent Ghat1 symbol belong to E | both symbols are in E-tilde after the paper's Phi_delta conjugation | no exact identity is asserted; the theorem gives a compact residue | `CERTIFIED_MOD_COMPACT` |
 | $U_1 \times W_{1,2}^{+}$ | KKL2014TwoShifts Lemmas 4.4--4.5 | Wplus_12 is the source operator R_y after all transports | both kernels have fixed-singularity structure | kernels, cutoff, weight, and branch maps are different | `ANALOGY_ONLY` |
 | $\widehat G_1 \times W_{1,2}^{+}$ | Karlovich2017HasemanSO Theorem 5.6 | log-star block theorem specializes to the localized cusp block | the coefficient and block order are explicit | geometry, localization, and symbol identification | `ANALOGY_ONLY` |
 | $R_1B_1 \times W_{1,2}^{+}$ | H2 via Mellin semiproduct or cusp-algebra closure | H1 and a compatible class for Wplus_12 | the suffix is contiguous in every word | H1 and Wplus_12 class membership | `BLOCKED` |
@@ -22,9 +22,9 @@ modulo-compact relation into an exact equality.
 
 - **KKL2014TwoShifts, Theorem 3.3 (printed p. 942; PDF p. 8).** Its
   semiproduct conclusion requires both symbols to lie in
-  \(\mathcal E(\mathbb R_+,V(\mathbb R))\). This supports a
-  specialization to prove for \(R_1\widehat G_1\), after recording the
-  lambda-independent multiplication symbol. It does not apply to
+  \(\mathcal E(\mathbb R_+,V(\mathbb R))\). Phase Q verified these
+  hypotheses for \(R_1\widehat G_1\), so that row is now certified modulo
+  compact operators. The theorem still does not apply to
   \(R_1U_1\), because the paper explicitly notes that
   \(\gamma_1^{i\lambda}\notin V(\mathbb R)\) for a nontrivial dilation.
 - **KKL2014TwoShifts, Lemma 3.4 (printed p. 942; PDF p. 8).** The exact
@@ -58,7 +58,8 @@ modulo-compact relation into an exact equality.
 
 ## Matrix conclusion
 
-The only near-term source specialization is the
-\(R_1\widehat G_1\) row. It does not settle the paired
-\(R_1U_1\) case needed by H1. Every row containing
+Phase Q certifies the two short products at different strengths:
+\(R_1U_1\) has an exact factorized representation, while
+\(R_1\widehat G_1\) has a standard Mellin representation modulo compact
+operators. This does not yet yield one admissible H1 class. Every row containing
 \(W_{1,2}^{+}\) remains either analogy-only or blocked.

@@ -1,0 +1,96 @@
+% Reusable Phase Q fragment; no document preamble is included.
+\paragraph{Conventions.}
+Let \(d\mu(x)=dx/x\) and
+\[
+ (\mathcal Mf)(\lambda)
+ =\int_0^\infty f(x)x^{-i\lambda}\frac{dx}{x},
+ \qquad
+ (\mathcal M^{-1}g)(x)
+ =\frac1{2\pi}\int_{\mathbb R}g(\lambda)x^{i\lambda}\,d\lambda.
+\]
+The Mellin pseudodifferential quantization is
+\[
+ [\operatorname{Op}(a)f](x)
+ =\frac1{2\pi}\int_{\mathbb R}\int_0^\infty
+ a(x,\lambda)\left(\frac{x}{y}\right)^{i\lambda}
+ f(y)\frac{dy}{y}\,d\lambda.
+\]
+
+Put
+\[
+ \kappa_\delta=\delta+\frac1p,
+ \qquad
+ (\Phi_\delta f)(x)=x^{\kappa_\delta}f(x),
+ \qquad
+ U_\gamma=\gamma^{\kappa_\delta}V_\gamma,
+ \quad
+ (V_\gamma f)(x)=f(\gamma x).
+\]
+Then
+\[
+ (\Phi_\delta U_\gamma\Phi_\delta^{-1}g)(x)=g(\gamma x)
+ =:(D_\gamma g)(x).
+\]
+
+\paragraph{Multiplier and sign.}
+For \(z=\gamma x\),
+\[
+\begin{aligned}
+ \mathcal M(D_\gamma g)(\lambda)
+ &=\int_0^\infty g(\gamma x)x^{-i\lambda}\frac{dx}{x}\\
+ &=\gamma^{i\lambda}
+   \int_0^\infty g(z)z^{-i\lambda}\frac{dz}{z}.
+\end{aligned}
+\]
+Thus
+\[
+ d_\gamma(\lambda)=\gamma^{+i\lambda};
+\]
+there is no additional scalar factor for the normalized dilation.
+
+\paragraph{Exact ordered composition.}
+For \(g\in C_c^\infty(\mathbb R_+)\), first truncate the outer frequency
+integral.  Substitution \(z=\gamma y\) in the inner integral gives
+\[
+\begin{aligned}
+ [\operatorname{Op}(a)D_\gamma g](x)
+ &=\frac1{2\pi}\int_{\mathbb R}\int_0^\infty
+ a(x,\lambda)\left(\frac{x}{y}\right)^{i\lambda}
+ g(\gamma y)\frac{dy}{y}\,d\lambda\\
+ &=\frac1{2\pi}\int_{\mathbb R}\int_0^\infty
+ a(x,\lambda)\gamma^{i\lambda}
+ \left(\frac{x}{z}\right)^{i\lambda}
+ g(z)\frac{dz}{z}\,d\lambda.
+\end{aligned}
+\]
+No integrations are exchanged and no factors are commuted.  Therefore
+\[
+ \boxed{
+ \operatorname{Op}(a)D_\gamma
+ =\operatorname{Op}_{\mathrm{right}\text{-}\gamma}
+   (a,d_\gamma)
+ }
+\]
+exactly.  On the test class the right-hand side is the quantization with
+amplitude \(a(x,\lambda)d_\gamma(\lambda)\).
+
+If \(\operatorname{Op}(a)\) is bounded, then \(D_\gamma\) is an isometry and
+\[
+ \|\operatorname{Op}(a)D_\gamma\|
+ \leq\|\operatorname{Op}(a)\|.
+\]
+Consequently the identity extends uniquely by density.  In the weighted
+space,
+\[
+ R_1U_1
+ =\Phi_\delta^{-1}
+   \operatorname{Op}_{\mathrm{right}\text{-}\gamma_1}
+   (r_1,d_{\gamma_1})
+   \Phi_\delta.
+\]
+
+\paragraph{Status warning.}
+For \(\gamma\ne1\), \(d_\gamma\notin V(\mathbb R)\).  Hence the exact
+identity does not assert
+\(a d_\gamma\in\widetilde{\mathcal E}(\mathbb R_+,V(\mathbb R))\), nor does
+it supply a closed algebra, a Fredholm symbol, or a Fredholm conclusion.
