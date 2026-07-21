@@ -427,6 +427,15 @@ P_minus = OperatorAtom("P_minus", kind="projection")
 R1 = OperatorAtom("R1", kind="formal_regularizer")
 N2 = OperatorAtom("N2", kind="normalized_pivot")
 N2_first = OperatorAtom("N2_first", kind="normalized_schur_pivot")
+U1 = OperatorAtom("U1", kind="dilation_operator")
+U2 = OperatorAtom("U2", kind="dilation_operator")
+Ghat1 = OperatorAtom("Ghat1", kind="normalized_coefficient")
+Ghat2 = OperatorAtom("Ghat2", kind="normalized_coefficient")
+C2 = OperatorAtom("C2", kind="complete_first_pivot_correction")
+C2_normalized = OperatorAtom(
+    "C2_normalized",
+    kind="normalized_complete_first_pivot_correction",
+)
 
 
 def main_expression() -> LinearCombination:

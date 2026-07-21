@@ -10,6 +10,7 @@ from sympy.printing.latex import LatexPrinter
 
 from .actions import AppliedLinearCombination, PrincipalValue
 from .conditional import ConditionalIdentity
+from .complete_correction import CompleteCorrectionDerivation
 from .derivations import FirstSchurDerivationTrace
 from .domains import AssumptionContext, ComplexDomain, DomainRegionKind
 from .kernels import KernelCombination
@@ -45,8 +46,12 @@ OPERATOR_LATEX: dict[str, str] = {
     "A21": r"A_{2,1}",
     "A22": r"A_{2,2}",
     "A22_first": r"A_{2,2}^{(1)}",
+    "C2": r"\mathcal C_{2}",
+    "C2_normalized": r"\mathcal C_{2}^{\mathrm{norm}}",
     "G1": r"G_{1}\,I",
     "G2": r"G_{2}\,I",
+    "Ghat1": r"\widehat G_{1}",
+    "Ghat2": r"\widehat G_{2}",
     "I": r"I",
     "N2": r"N_{2}",
     "N2_first": r"N_{2}^{(1)}",
@@ -57,6 +62,8 @@ OPERATOR_LATEX: dict[str, str] = {
     "S_Rplus": r"S_{\mathbb R_+}",
     "T1_minus": r"T_{1,-}",
     "T2_minus": r"T_{2,-}",
+    "U1": r"U_{1}",
+    "U2": r"U_{2}",
     "U1_inverse": r"U_{1}^{-1}",
     "U2_inverse": r"U_{2}^{-1}",
     "Vtilde_alpha1": r"\widetilde V_{\alpha_1}",
@@ -311,6 +318,27 @@ class RenderedNormalizedFirstSchurPivot:
 
 
 @dataclass(frozen=True)
+class RenderedCompleteCorrectionDerivation:
+    """Ordered presentation of exact normalization inside a mod-compact model."""
+
+    steps: tuple[RenderedDerivationStep, ...]
+
+    def __post_init__(self) -> None:
+        if not self.steps or not all(
+            isinstance(item, RenderedDerivationStep) for item in self.steps
+        ):
+            raise LatexRenderingError(
+                "steps must contain RenderedDerivationStep objects."
+            )
+        keys = tuple(step.key for step in self.steps)
+        if len(set(keys)) != len(keys):
+            raise LatexRenderingError("complete-correction step keys must be unique.")
+
+    def as_latex(self) -> str:
+        return "\n\n".join(step.latex for step in self.steps)
+
+
+@dataclass(frozen=True)
 class RenderedRelativeWienerHopfTrace:
     """Ordered LaTeX presentation of one exact relative-WH trace."""
 
@@ -454,6 +482,88 @@ def render_normalized_first_schur_pivot_exact_latex(
         f"{_render_normalized_endpoint_latex(trace.exact_result.left)} = "
         f"{_render_normalized_endpoint_latex(trace.exact_result.right)}"
     )
+
+
+def render_original_complete_correction_latex(
+    trace: CompleteCorrectionDerivation,
+) -> str:
+    """Render the Phase N factorized definition of ``C2``."""
+
+    if not isinstance(trace, CompleteCorrectionDerivation):
+        raise TypeError("trace must be a CompleteCorrectionDerivation.")
+    factorization = trace.original_factorization
+    prefix = _render_normalized_endpoint_latex(factorization.prefix)
+    left = _render_normalized_endpoint_latex(factorization.left_difference)
+    left_wh = _render_normalized_atom_latex(factorization.left_wiener_hopf)
+    bridge = _render_normalized_endpoint_latex(factorization.bridge)
+    right = _render_normalized_endpoint_latex(factorization.right_difference)
+    right_wh = _render_normalized_atom_latex(factorization.right_wiener_hopf)
+    suffix = _render_normalized_endpoint_latex(factorization.suffix)
+    return (
+        r"\mathcal C_{2} = "
+        rf"{prefix}\,\left({left}\right)\,{left_wh}\,{bridge}\,"
+        rf"\left({right}\right)\,{right_wh}\,{suffix}"
+    )
+
+
+def render_normalized_complete_correction_latex(
+    trace: CompleteCorrectionDerivation,
+) -> str:
+    """Render C0 from the validated normalized factorization metadata."""
+
+    if not isinstance(trace, CompleteCorrectionDerivation):
+        raise TypeError("trace must be a CompleteCorrectionDerivation.")
+    factorization = trace.normalized_factorization
+    left = _render_normalized_endpoint_latex(factorization.left_difference)
+    left_wh = _render_normalized_atom_latex(factorization.left_wiener_hopf)
+    bridge = _render_normalized_endpoint_latex(factorization.bridge)
+    right = _render_normalized_endpoint_latex(factorization.right_difference)
+    right_wh = _render_normalized_atom_latex(factorization.right_wiener_hopf)
+    suffix = _render_normalized_endpoint_latex(factorization.suffix)
+    return (
+        r"\mathcal C_{2}^{\mathrm{norm}} = "
+        rf"\left({left}\right)\,{left_wh}\,{bridge}\,"
+        rf"\left({right}\right)\,{right_wh}\,{suffix}"
+    )
+
+
+def render_complete_correction_derivation_latex(
+    trace: CompleteCorrectionDerivation,
+) -> RenderedCompleteCorrectionDerivation:
+    """Render B1--B4 with distinct exact and modulo-compact symbols."""
+
+    if not isinstance(trace, CompleteCorrectionDerivation):
+        raise TypeError("trace must be a CompleteCorrectionDerivation.")
+    left_rule = trace.left_normalization_rule.relation
+    right_rule = trace.right_normalization_rule.relation
+    steps = (
+        RenderedDerivationStep(
+            "B1_pivot_correction",
+            "Correction inherited from the Phase N modulo-compact model",
+            r"N_{2}^{(1)} \simeq N_{2} + \mathcal C_{2}",
+        ),
+        RenderedDerivationStep(
+            "B1_correction_definition",
+            "Factorized complete correction",
+            render_original_complete_correction_latex(trace),
+        ),
+        RenderedDerivationStep(
+            "B2_left_normalization",
+            "Certified exact left branch normalization",
+            _render_prefixed_difference_identity_latex(left_rule),
+        ),
+        RenderedDerivationStep(
+            "B3_right_normalization",
+            "Certified exact right branch normalization",
+            _render_prefixed_difference_identity_latex(right_rule),
+        ),
+        RenderedDerivationStep(
+            "B4_normalized_correction",
+            "Exact normalized correction inside the supplied model",
+            render_normalized_complete_correction_latex(trace),
+        ),
+    )
+    return RenderedCompleteCorrectionDerivation(steps)
 
 
 def render_normalized_first_schur_pivot_mod_compact_latex(
@@ -620,6 +730,32 @@ def render_normalized_proof_obligations_markdown(
     return "\n".join(
         f"{index}. {obligation.statement}"
         for index, obligation in enumerate(trace.proof_obligations, start=1)
+    )
+
+
+def _render_prefixed_difference_identity_latex(identity: ExactIdentity) -> str:
+    left = identity.left
+    if not isinstance(left, LinearCombination) or len(left.terms) != 2:
+        raise LatexRenderingError(
+            "branch normalization left side must have exactly two terms."
+        )
+    first, second = left.terms
+    if (first.coefficient, second.coefficient) != (1, -1):
+        raise LatexRenderingError("branch normalization must have signs (+,-).")
+    if not first.product.factors or not second.product.factors:
+        raise LatexRenderingError("branch normalization terms must be nonempty.")
+    prefix = first.product.factors[0]
+    if second.product.factors[0] is not prefix:
+        raise LatexRenderingError("branch normalization terms must share a prefix.")
+    first_tail = Product(first.product.factors[1:])
+    second_tail = Product(second.product.factors[1:])
+    inner = LinearCombination((Term(1, first_tail), Term(-1, second_tail)))
+    return (
+        _render_normalized_atom_latex(prefix)
+        + r"\,\left("
+        + _render_normalized_endpoint_latex(inner)
+        + r"\right) = "
+        + _render_normalized_endpoint_latex(identity.right)
     )
 
 

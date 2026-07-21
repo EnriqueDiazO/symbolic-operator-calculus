@@ -67,6 +67,14 @@ class FactorStatus(str, Enum):
     REGULARIZER_MOD_COMPACT = "regularizador módulo compactos"
 
 
+class RuleCertificationStatus(str, Enum):
+    """Certification level explicitly attached to a supplied operator rule."""
+
+    CERTIFIED_EXACT = "CERTIFIED_EXACT"
+    CERTIFIED_MOD_COMPACT = "CERTIFIED_MOD_COMPACT"
+    UNCERTIFIED = "UNCERTIFIED"
+
+
 class ExactIdentityRequiredError(TypeError):
     """Raised when a non-exact semantic relation is used as an exact one."""
 
@@ -155,6 +163,53 @@ class AnalyticProofObligation:
                 "AnalyticProofObligation.statement",
             ),
         )
+
+
+@dataclass(frozen=True)
+class OperatorRule:
+    """Named operator rule with explicit logic, provenance, and preconditions.
+
+    Construction records caller-supplied certification metadata. It does not
+    inspect the source or prove the relation.
+    """
+
+    name: str
+    relation_kind: DerivationRelationKind
+    relation: object
+    preconditions: tuple[str, ...]
+    source: str
+    certification_status: RuleCertificationStatus
+
+    def __post_init__(self) -> None:
+        object.__setattr__(
+            self,
+            "name",
+            _require_nonempty_text(self.name, "OperatorRule.name"),
+        )
+        if not isinstance(self.relation_kind, DerivationRelationKind):
+            raise TypeError("relation_kind must be a DerivationRelationKind.")
+        if self.relation is None:
+            raise ValueError("OperatorRule.relation must be supplied.")
+        if isinstance(self.preconditions, (str, bytes)):
+            raise TypeError("preconditions must be an iterable of strings.")
+        try:
+            preconditions = tuple(self.preconditions)
+        except TypeError as exc:
+            raise TypeError("preconditions must be an iterable of strings.") from exc
+        if not preconditions or not all(
+            isinstance(item, str) and item.strip() for item in preconditions
+        ):
+            raise ValueError("preconditions must contain non-empty strings.")
+        object.__setattr__(self, "preconditions", preconditions)
+        object.__setattr__(
+            self,
+            "source",
+            _require_nonempty_text(self.source, "OperatorRule.source"),
+        )
+        if not isinstance(self.certification_status, RuleCertificationStatus):
+            raise TypeError(
+                "certification_status must be a RuleCertificationStatus."
+            )
 
 
 @final
