@@ -145,8 +145,13 @@ The literature index existed at
 `0b4dbed213169f2e6ad9a0954ad764fe97a6295c`. Its `git status --short` output
 was empty.
 
-These HEAD values and clean statuses are the final read-only integrity
-checkpoints.
+These HEAD values and clean statuses are the **initial** read-only integrity
+checkpoints. During the later literature consultation, that external
+repository appeared at HEAD
+`0275d2e8332c000c5677062b3471a16105751fa7`, still with empty
+`git status --short`. No Phase O command wrote to it; the independent HEAD
+advance is recorded instead of treating the earlier value as a final
+checkpoint.
 
 ## 6. Public Phase N API
 

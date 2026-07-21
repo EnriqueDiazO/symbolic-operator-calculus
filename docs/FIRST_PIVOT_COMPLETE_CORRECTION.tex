@@ -1,0 +1,96 @@
+% Reusable fragment generated from symbolic_operator_calculus.
+% Requires standard amsmath support; defines no private macros.
+
+\subsection*{Primer pivote y corrección estructural}
+\[
+N_{2}^{(1)}
+=
+N_{2}
+-
+Z_{2}^{-1}A_{2,1}T_{1,-}R_{1}Z_{1}^{-1}A_{1,2}T_{2,-}.
+\]
+Definimos estructuralmente, dentro del modelo de bloques Wiener--Hopf
+suministrado,
+\[
+\mathcal C_{2} = Z_{2}^{-1}\,\left(\widetilde V_{\alpha_2} - G_{2}\right)\,W^-_{2,1}\,T_{1,-}\,R_{1}\,Z_{1}^{-1}\,\left(\widetilde V_{\alpha_1} - G_{1}\right)\,W^+_{1,2}\,T_{2,-}.
+\]
+La conexión con el pivote conserva explícitamente su fuerza lógica:
+\[
+N_{2}^{(1)}\simeq N_{2}+\mathcal C_{2}.
+\]
+Esta equivalencia módulo compactos permanece no certificada; no es una igualdad
+operatorial exacta.
+
+\subsection*{Normalizaciones exactas de rama}
+A partir de
+$\widetilde V_{\alpha_k}=Z_kU_k$,
+$G_k=Z_k\widehat G_k$ y la invertibilidad de $Z_k$, se obtienen las
+identidades exactas
+\[
+Z_{2}^{-1}(\widetilde V_{\alpha_2}-G_2)
+=U_2-\widehat G_2,
+\qquad
+Z_{1}^{-1}(\widetilde V_{\alpha_1}-G_1)
+=U_1-\widehat G_1.
+\]
+No se usa ninguna conmutación con factores de Cauchy, Wiener--Hopf o con $R_1$.
+
+\subsection*{C0: forma normalizada factorizada}
+\[
+\mathcal C_{2}^{\mathrm{norm}} = \left(U_{2} - \widehat G_{2}\right)\,W^-_{2,1}\,T_{1,-}\,R_{1}\,\left(U_{1} - \widehat G_{1}\right)\,W^+_{1,2}\,T_{2,-}.
+\]
+La igualdad anterior es exacta dentro de la expresión estructural
+$\mathcal C_2$; el paso desde el pivote sigue siendo módulo compactos.
+
+\subsection*{C1: expansión de las dos diferencias}
+\[
+\mathcal C_{2}^{\mathrm{norm}} = U_{2}\,W^-_{2,1}\,T_{1,-}\,R_{1}\,U_{1}\,W^+_{1,2}\,T_{2,-} - U_{2}\,W^-_{2,1}\,T_{1,-}\,R_{1}\,\widehat G_{1}\,W^+_{1,2}\,T_{2,-} - \widehat G_{2}\,W^-_{2,1}\,T_{1,-}\,R_{1}\,U_{1}\,W^+_{1,2}\,T_{2,-} + \widehat G_{2}\,W^-_{2,1}\,T_{1,-}\,R_{1}\,\widehat G_{1}\,W^+_{1,2}\,T_{2,-}.
+\]
+
+\subsection*{C2: expansión de los dos auxiliares}
+Se usan únicamente las identidades exactas
+\[
+T_{1,-}=U_1^{-1}P^+ +P^-,
+\qquad
+T_{2,-}=U_2^{-1}P^+ +P^-.
+\]
+\[
+\begin{aligned}\mathcal C_{2}^{\mathrm{norm}} &={}& \left(U_{2} - \widehat G_{2}\right)\,W^-_{2,1}\,U_{1}^{-1}\,P^{+}\,R_{1}\,\left(U_{1} - \widehat G_{1}\right)\,W^+_{1,2}\,U_{2}^{-1}\,P^{+} \\ &&{}+ \left(U_{2} - \widehat G_{2}\right)\,W^-_{2,1}\,U_{1}^{-1}\,P^{+}\,R_{1}\,\left(U_{1} - \widehat G_{1}\right)\,W^+_{1,2}\,P^{-} \\ &&{}+ \left(U_{2} - \widehat G_{2}\right)\,W^-_{2,1}\,P^{-}\,R_{1}\,\left(U_{1} - \widehat G_{1}\right)\,W^+_{1,2}\,U_{2}^{-1}\,P^{+} \\ &&{}+ \left(U_{2} - \widehat G_{2}\right)\,W^-_{2,1}\,P^{-}\,R_{1}\,\left(U_{1} - \widehat G_{1}\right)\,W^+_{1,2}\,P^{-}\end{aligned}.
+\]
+Las diferencias $U_k-\widehat G_k$ permanecen agrupadas en este nivel.
+
+\subsection*{C3: expansión completa controlada}
+\[
+\begin{aligned}\mathcal C_{2}^{\mathrm{norm}} &={}& \underbrace{U_{2}\,W^-_{2,1}\,U_{1}^{-1}\,P^{+}\,R_{1}\,U_{1}\,W^+_{1,2}\,U_{2}^{-1}\,P^{+}}_{\mathrm{C2-T01}} \\ &&- \underbrace{U_{2}\,W^-_{2,1}\,U_{1}^{-1}\,P^{+}\,R_{1}\,\widehat G_{1}\,W^+_{1,2}\,U_{2}^{-1}\,P^{+}}_{\mathrm{C2-T02}} \\ &&- \underbrace{\widehat G_{2}\,W^-_{2,1}\,U_{1}^{-1}\,P^{+}\,R_{1}\,U_{1}\,W^+_{1,2}\,U_{2}^{-1}\,P^{+}}_{\mathrm{C2-T03}} \\ &&+ \underbrace{\widehat G_{2}\,W^-_{2,1}\,U_{1}^{-1}\,P^{+}\,R_{1}\,\widehat G_{1}\,W^+_{1,2}\,U_{2}^{-1}\,P^{+}}_{\mathrm{C2-T04}} \\ &&+ \underbrace{U_{2}\,W^-_{2,1}\,U_{1}^{-1}\,P^{+}\,R_{1}\,U_{1}\,W^+_{1,2}\,P^{-}}_{\mathrm{C2-T05}} \\ &&- \underbrace{U_{2}\,W^-_{2,1}\,U_{1}^{-1}\,P^{+}\,R_{1}\,\widehat G_{1}\,W^+_{1,2}\,P^{-}}_{\mathrm{C2-T06}} \\ &&- \underbrace{\widehat G_{2}\,W^-_{2,1}\,U_{1}^{-1}\,P^{+}\,R_{1}\,U_{1}\,W^+_{1,2}\,P^{-}}_{\mathrm{C2-T07}} \\ &&+ \underbrace{\widehat G_{2}\,W^-_{2,1}\,U_{1}^{-1}\,P^{+}\,R_{1}\,\widehat G_{1}\,W^+_{1,2}\,P^{-}}_{\mathrm{C2-T08}} \\ &&+ \underbrace{U_{2}\,W^-_{2,1}\,P^{-}\,R_{1}\,U_{1}\,W^+_{1,2}\,U_{2}^{-1}\,P^{+}}_{\mathrm{C2-T09}} \\ &&- \underbrace{U_{2}\,W^-_{2,1}\,P^{-}\,R_{1}\,\widehat G_{1}\,W^+_{1,2}\,U_{2}^{-1}\,P^{+}}_{\mathrm{C2-T10}} \\ &&- \underbrace{\widehat G_{2}\,W^-_{2,1}\,P^{-}\,R_{1}\,U_{1}\,W^+_{1,2}\,U_{2}^{-1}\,P^{+}}_{\mathrm{C2-T11}} \\ &&+ \underbrace{\widehat G_{2}\,W^-_{2,1}\,P^{-}\,R_{1}\,\widehat G_{1}\,W^+_{1,2}\,U_{2}^{-1}\,P^{+}}_{\mathrm{C2-T12}} \\ &&+ \underbrace{U_{2}\,W^-_{2,1}\,P^{-}\,R_{1}\,U_{1}\,W^+_{1,2}\,P^{-}}_{\mathrm{C2-T13}} \\ &&- \underbrace{U_{2}\,W^-_{2,1}\,P^{-}\,R_{1}\,\widehat G_{1}\,W^+_{1,2}\,P^{-}}_{\mathrm{C2-T14}} \\ &&- \underbrace{\widehat G_{2}\,W^-_{2,1}\,P^{-}\,R_{1}\,U_{1}\,W^+_{1,2}\,P^{-}}_{\mathrm{C2-T15}} \\ &&+ \underbrace{\widehat G_{2}\,W^-_{2,1}\,P^{-}\,R_{1}\,\widehat G_{1}\,W^+_{1,2}\,P^{-}}_{\mathrm{C2-T16}}\end{aligned}.
+\]
+Los identificadores $\mathrm{C2\text{-}T01},\ldots,
+\mathrm{C2\text{-}T16}$ son estables. Cada término conserva exactamente una
+aparición atómica de $R_1$ y el orden no conmutativo mostrado.
+
+\subsection*{Obligaciones de prueba}
+\begin{enumerate}
+\item Justificar, con identificación de bloques e hipótesis concretas, las
+sustituciones Wiener--Hopf módulo compactos heredadas de la Fase N.
+\item Probar reglas aplicables para multiplicación o dilatación junto a cada
+Wiener--Hopf localizado.
+\item Probar la composición de cada factor de Cauchy izquierdo con $R_1$.
+\item Probar la composición de $R_1$ con $U_1$ y con $\widehat G_1$, sin mover
+$R_1$ a través de ningún factor.
+\item Exhibir cutoffs/localizaciones explícitos antes de especializar los
+resultados cuspídeos de 2025.
+\item Demostrar que la palabra completa es $\operatorname{Op}(c)+K$ con $c$ en
+una clase Mellin admisible, o demostrar su pertenencia a una álgebra cuspídea
+cerrada apropiada.
+\item Solo después, construir el símbolo correspondiente, verificar todas sus
+condiciones de no degeneración y aplicar un criterio de Fredholmness, sin
+anticipar la conclusión.
+\end{enumerate}
+
+\subsection*{Decisión de ruta}
+\[
+\boxed{\text{C: insufficient evidence}}
+\]
+No hay reglas de cierre Mellin verificadas para las interfaces centrales ni una
+prueba de pertenencia a la álgebra cuspídea de 2025. Esta conclusión no afirma
+que alguna de las rutas sea imposible; afirma que ninguna está certificada por
+la evidencia disponible.
