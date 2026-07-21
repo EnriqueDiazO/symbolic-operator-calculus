@@ -1,0 +1,93 @@
+% Reusable Phase P fragment; no document preamble is included.
+\paragraph{Ordered right-core words.}
+The four products are retained in their noncommutative order:
+\[
+\begin{aligned}
+K_{++} &:= U_{1}^{-1}\,P^{+}\,R_{1}\,U_{1}\,W^+_{1,2} \\
+K_{+\widehat G} &:= U_{1}^{-1}\,P^{+}\,R_{1}\,\widehat G_{1}\,W^+_{1,2} \\
+K_{-+} &:= P^{-}\,R_{1}\,U_{1}\,W^+_{1,2} \\
+K_{-\widehat G} &:= P^{-}\,R_{1}\,\widehat G_{1}\,W^+_{1,2}
+\end{aligned}
+\]
+Each word contains exactly one atomic factor (R_1), and
+(W_{1,2}^{+}) remains at the right edge.
+
+\paragraph{Verified source evidence and its boundary.}
+KKL2014TwoShifts, Theorem~3.3 (printed p.~942, PDF p.~8), gives a
+semiproduct formula modulo compact operators when both symbols belong to
+\(\mathcal E(\mathbb R_+,V(\mathbb R))\).  Lemma~3.4 on the same page gives
+an exact separated triple product under its additional variable-dependence
+hypotheses.  The paper supplies
+\(r_1\in\widetilde{\mathcal E}(\mathbb R_+,V(\mathbb R))\), but the multiplier
+\(\gamma_1^{i\lambda}\) of a nontrivial \(U_1\) is not in
+\(V(\mathbb R)\).  Thus these results do not establish the ordered product
+\(R_1U_1\).
+
+KKL2014TwoShifts, Lemmas~4.4--4.5 (printed pp.~947--950, PDF pp.~13--16),
+concern the particular operator \(R_y\).  No equality or equivalence modulo
+compacts between \(R_y\) and the localized Wiener--Hopf operator
+\(W_{1,2}^{+}\) has been proved.  Karlovich2017HasemanSO, Theorem~5.6, is an
+analogy on logarithmic-star geometry.  Karlovich2025Cusps, Lemmas~3.1--3.2 and
+Corollary~3.3, provide pure-cusp localization evidence, but do not place
+\(R_1\) or the complete words in the 2025 algebra.
+
+\paragraph{Unproved candidates.}
+The following are candidate conclusions only; in each display, compactness of
+the residue is part of the missing proof:
+\[
+\begin{array}{ll}
+\mathrm{H1}:&
+ R_1B_1=\operatorname{Op}(c_{B_1})+K_{B_1},\\[0.3em]
+\mathrm{H2}:&
+ R_1B_1W_{1,2}^{+}
+ =\operatorname{Op}(c_{B_1}^{+})+K_{B_1}^{+},\\[0.3em]
+\mathrm{H3}:&
+ Q_1R_1B_1W_{1,2}^{+}
+ =\operatorname{Op}(c_{Q_1,B_1}^{+})+K_{Q_1,B_1}^{+},
+\end{array}
+\]
+where
+\[
+ B_1\in\{U_1,\widehat G_1\},
+ \qquad
+ Q_1\in\{U_1^{-1}P^+,P^-\}.
+\]
+H1 is blocked by the \(U_1\) case.  H2 additionally depends on an
+unproved identification of \(W_{1,2}^{+}\), and H3 additionally depends on a
+weighted ordered rule for the exterior factor \(Q_1\).
+
+\paragraph{Phase P decision.}
+\[
+\boxed{\text{decision: NONE}\qquad\text{confidence: high}.}
+\]
+No H1, H2, or H3 statement is promoted to a lemma.  The prerequisite is to
+define an explicit calculus containing \(\gamma_1^{i\lambda}\) and prove an
+ordered right-dilation composition rule for
+\(\operatorname{Op}(r_1)U_1\), including its precise class and compact
+residue; the \(\widehat G_1\) specialization must be recorded separately.
+
+\paragraph{Open proof obligations.}
+\begin{enumerate}
+\item[P-01.] Identify \(W_{1,2}^{+}\) in a closure-compatible class.
+\item[P-02.] Represent \(U_1\) in a calculus compatible with \(R_1\).
+\item[P-03.] Verify the admissible Mellin-symbol specialization for
+  \(\widehat G_1\).
+\item[P-04.] Prove a valid ordered semiproduct rule for both products
+  \(R_1B_1\).
+\item[P-05.] Control \((R_1B_1)W_{1,2}^{+}\).
+\item[P-06.] Control \(Q_1\) at the left without commuting it through
+  \(R_1\).
+\item[P-07.] Prove compactness of every accumulated residue.
+\item[P-08.] Identify the resulting symbol and its class.
+\item[P-09.] Propagate the result to all sixteen correction terms.
+\item[P-10.] Reconstruct \(\mathcal C_2\) at the certified relation strength.
+\item[P-11.] Prove membership of \(N_2^{(1)}\) in the selected class or
+  algebra.
+\item[P-12.] Only then verify nonvanishing and Fredholm hypotheses.
+\end{enumerate}
+
+\paragraph{Mathematical-status warning.}
+Phase P certifies the four formal operator words and the dependency structure
+above.  It does not certify Mellin-PDO membership, cusp-algebra membership,
+compactness of a new residue, a final symbol, or Fredholmness of
+\(N_2^{(1)}\).

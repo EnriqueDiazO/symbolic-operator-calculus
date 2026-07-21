@@ -1,0 +1,177 @@
+schema_version: 1
+obligations:
+  - id: "P-01"
+    statement: "Identify Wplus_12 in a closure-compatible operator class."
+    depends_on: []
+    sources:
+      - "Karlovich2025Cusps:3.3"
+      - "KKL2014TwoShifts:4.4"
+    factors_affected:
+      - "Wplus_12"
+    status: "BLOCKED"
+    evidence_required: "kernel or symbol comparison including cutoff, weight, and branches"
+    blocking_effect: "blocks H2, H3, Mellin closure, and cusp-algebra membership"
+    closure_criterion: "an exact or certified mod-compact class identification"
+  - id: "P-02"
+    statement: "Represent U1 in a calculus compatible with the R1 semiproduct."
+    depends_on: []
+    sources:
+      - "paper:mellin-representation-dilation-shift"
+    factors_affected:
+      - "U1"
+    status: "FORMALLY_REDUCED"
+    evidence_required: "a calculus containing the non-V multiplier gamma1^(i lambda)"
+    blocking_effect: "blocks the U1 case of H1"
+    closure_criterion: "a proved ordered composition rule for Op(r1) followed by U1"
+  - id: "P-03"
+    statement: "Represent Ghat1 as an admissible Mellin multiplication symbol."
+    depends_on: []
+    sources:
+      - "paper:normalized-diagonal-symbol-admissible"
+      - "KKL2014TwoShifts:3.3"
+    factors_affected:
+      - "Ghat1"
+    status: "SOURCE_VERIFIED"
+    evidence_required: "match the paper's SO coefficient to the source E symbol hypothesis"
+    blocking_effect: "blocks the Ghat1 specialization of H1 until recorded"
+    closure_criterion: "prove the lambda-independent Ghat1 symbol belongs to E(R+,V(R))"
+  - id: "P-04"
+    statement: "Apply a valid ordered semiproduct rule to R1 B1 for both B1 choices."
+    depends_on:
+      - "P-02"
+      - "P-03"
+    sources:
+      - "KKL2014TwoShifts:3.3"
+      - "KKL2014TwoShifts:3.4"
+    factors_affected:
+      - "R1"
+      - "U1"
+      - "Ghat1"
+    status: "BLOCKED"
+    evidence_required: "factor-by-factor symbol membership and composition proof"
+    blocking_effect: "blocks uniform H1 and every longer candidate"
+    closure_criterion: "produce an identified symbol class and compact remainder for both B1"
+  - id: "P-05"
+    statement: "Control (R1 B1)Wplus_12 without reordering factors."
+    depends_on:
+      - "P-01"
+      - "P-04"
+    sources:
+      - "Karlovich2017HasemanSO:5.6"
+      - "Karlovich2025Cusps:3.3"
+    factors_affected:
+      - "R1"
+      - "U1"
+      - "Ghat1"
+      - "Wplus_12"
+    status: "BLOCKED"
+    evidence_required: "compatible representation of Wplus_12 and a lateral product theorem"
+    blocking_effect: "blocks H2 and H3"
+    closure_criterion: "derive a certified model for the ordered three-factor suffix"
+  - id: "P-06"
+    statement: "Control Q1 before R1 B1 Wplus_12 without commuting it."
+    depends_on:
+      - "P-05"
+    sources:
+      - "KKL2014TwoShifts:2.7"
+      - "KKL2014TwoShifts:5.2"
+    factors_affected:
+      - "U1_inverse"
+      - "P_plus"
+      - "P_minus"
+      - "R1"
+    status: "BLOCKED"
+    evidence_required: "weighted ordered rule for both Q1 choices"
+    blocking_effect: "blocks H3"
+    closure_criterion: "preserve the stored order and produce a controlled remainder"
+  - id: "P-07"
+    statement: "Prove compactness of every accumulated residue."
+    depends_on:
+      - "P-04"
+      - "P-05"
+      - "P-06"
+    sources:
+      - "Karlovich2025Cusps:3.1"
+      - "KKL2014TwoShifts:3.3"
+    factors_affected:
+      - "R1"
+      - "Wplus_12"
+    status: "BLOCKED"
+    evidence_required: "explicit residual formulas and compactness estimates"
+    blocking_effect: "prevents any candidate from becoming certified mod compact"
+    closure_criterion: "all residuals lie in K(L^p(R_+,w_delta)) with branch typing"
+  - id: "P-08"
+    statement: "Identify the resulting symbol and its precise class."
+    depends_on:
+      - "P-04"
+      - "P-05"
+      - "P-06"
+      - "P-07"
+    sources:
+      - "Karlovich2009MellinPDO:4.3"
+      - "Karlovich2025Cusps:6.1"
+    factors_affected:
+      - "R1"
+      - "U1"
+      - "Ghat1"
+      - "Wplus_12"
+    status: "BLOCKED"
+    evidence_required: "constructed symbol, variable dependence, and class estimates"
+    blocking_effect: "blocks algebra membership and later symbol tests"
+    closure_criterion: "one named symbol in a verified Mellin or cusp quotient class"
+  - id: "P-09"
+    statement: "Propagate the closure result to all 16 Phase O terms."
+    depends_on:
+      - "P-06"
+      - "P-07"
+      - "P-08"
+    sources:
+      - "phase-o:C2-T01--C2-T16"
+    factors_affected:
+      - "R1"
+      - "Wplus_12"
+    status: "BLOCKED"
+    evidence_required: "termwise branch-compatible substitution preserving order"
+    blocking_effect: "blocks reconstruction of the complete correction"
+    closure_criterion: "all 16 terms receive a relation of identical certified strength"
+  - id: "P-10"
+    statement: "Reconstruct the complete correction C2 from the 16 controlled terms."
+    depends_on:
+      - "P-09"
+    sources:
+      - "phase-o:complete-correction-expansion"
+    factors_affected:
+      - "R1"
+      - "Wplus_12"
+    status: "BLOCKED"
+    evidence_required: "finite summation with compatible compact ideals"
+    blocking_effect: "blocks any membership statement for the corrected pivot"
+    closure_criterion: "recover C2 without changing the Phase N mod-compact relation"
+  - id: "P-11"
+    statement: "Prove membership of N2first in the selected operator class or algebra."
+    depends_on:
+      - "P-10"
+    sources:
+      - "Karlovich2009MellinPDO:4.3"
+      - "Karlovich2025Cusps:6.2"
+    factors_affected:
+      - "R1"
+      - "Wplus_12"
+    status: "BLOCKED"
+    evidence_required: "closure of N2 plus the reconstructed correction"
+    blocking_effect: "blocks every analytic criterion for the pivot"
+    closure_criterion: "a proved membership theorem with an identified quotient symbol"
+  - id: "P-12"
+    statement: "Only after membership, verify nonvanishing and Fredholmness conditions."
+    depends_on:
+      - "P-11"
+    sources:
+      - "KKL2014Regularization:5.8"
+      - "Karlovich2025Cusps:6.2"
+    factors_affected:
+      - "R1"
+      - "Wplus_12"
+    status: "BLOCKED"
+    evidence_required: "complete boundary/fiber or determinant nonvanishing proof"
+    blocking_effect: "outside Phase P and blocks any Fredholm conclusion"
+    closure_criterion: "all hypotheses of the chosen criterion are checked"
